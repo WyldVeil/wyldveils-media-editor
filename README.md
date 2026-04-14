@@ -8,7 +8,7 @@ A video and audio processing suite with 52 tools, 28 languages, and a skinnable 
 
 ## Install
 
-1. Download **DoffysApp_Setup.exe** from the [Releases](https://github.com/WyldVeil/wyldveils-media-editor/releases/) page
+1. Download **WyldVeil files for your operating system** from the [Releases](https://github.com/WyldVeil/wyldveils-media-editor/releases/) page
 2. Run the installer
 3. Launch from the Start Menu or desktop shortcut
 
