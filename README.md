@@ -54,7 +54,7 @@ Use "Add or Remove Programs" in Windows Settings, or run the uninstaller from th
 
 Built with Python and Tkinter. Processing is powered by FFmpeg (bundled). The installer ships with an embedded Python runtime so nothing extra needs to be installed - no Python on your system, no pip, no command line.
 
-The app auto-installs any optional Python dependencies (like the text-to-speech engine) into its own private `libs/` folder on first use, keeping your system clean.
+The app auto-installs any (completely optional, just for functionality for a small number of tools) Python dependencies (like the text-to-speech engine) into its own private `libs/` folder on first use, keeping your system clean.
 
 ### Bundled tools
 
