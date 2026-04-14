@@ -1,4 +1,4 @@
-# Doffy's Video and Sound App Thingy
+# WyldVeil's Media Editor
 
 A video and audio processing suite with 52 tools, 28 languages, and a skinnable UI.
 
