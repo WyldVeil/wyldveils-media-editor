@@ -1,0 +1,37 @@
+# Python bytecode
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Vendored dependencies (auto-installed into libs/ at runtime)
+libs/
+
+# User configuration (machine-specific)
+settings.json
+skin.json
+
+# Binaries (large; bundled in installer release)
+bin/
+
+# Soundfonts (user-supplied)
+soundfonts/*.sf2
+soundfonts/*.sf3
+
+# OS noise
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor artefacts
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Temporary / build
+*.log
+*.tmp
+dist/
+build/
+*.spec
