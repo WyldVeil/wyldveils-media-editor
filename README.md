@@ -10,7 +10,7 @@ Play a free MMO I have been working on for some time (Very much a work in progre
 
 ## Install
 
-1. Download **WyldVeil files for your operating system** from the [Releases](https://github.com/WyldVeil/wyldveils-media-editor/releases/) page
+1. Download **WyldVeil Media Editor files for your operating system** from the [Releases](https://github.com/WyldVeil/wyldveils-media-editor/releases/) page
 2. Run the installer
 3. Launch from the Start Menu or desktop shortcut
 
