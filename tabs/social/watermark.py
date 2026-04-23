@@ -139,17 +139,17 @@ class TextBurnerTab(BaseTab):
             widget.destroy()
 
         mode = self.pos_var.get()
-        if mode == "Custom Coordinates":
+        if mode == t("watermark.custom_coordinates"):
             tk.Label(self.dyn_f, text=t("watermark.x_pos")).pack(side="left")
             tk.Entry(self.dyn_f, textvariable=self.custom_x, width=6, relief="flat").pack(side="left", padx=5)
             tk.Label(self.dyn_f, text=t("watermark.y_pos")).pack(side="left")
             tk.Entry(self.dyn_f, textvariable=self.custom_y, width=6, relief="flat").pack(side="left", padx=5)
-            
-        elif mode == "BOUNCING (DVD Mode)":
+
+        elif mode == t("watermark.bouncing_dvd_mode"):
             tk.Label(self.dyn_f, text=t("watermark.bounce_angle_deg")).pack(side="left")
             tk.Entry(self.dyn_f, textvariable=self.angle_var, width=6, relief="flat").pack(side="left", padx=5)
-            
-        elif mode == "RANDOM JUMPS":
+
+        elif mode == t("watermark.random_jumps"):
             tk.Label(self.dyn_f, text=t("watermark.jump_every")).pack(side="left")
             tk.Entry(self.dyn_f, textvariable=self.jump_freq, width=4, relief="flat").pack(side="left", padx=2)
             tk.Label(self.dyn_f, text="secs").pack(side="left", padx=(0, 15))
@@ -167,8 +167,9 @@ class TextBurnerTab(BaseTab):
         if color: self.color_var.set(color)
 
     def get_font_path(self):
-        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        
+        # This file lives at tabs/social/watermark.py — go up THREE levels to reach project root
+        base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
         # Get the base name from the dropdown (e.g. "BebasNeue")
         font_base = self.font_var.get().replace(" ", "")
         
@@ -268,12 +269,18 @@ class TextBurnerTab(BaseTab):
             self.ent_path.insert(0, path)
 
     def preview_text(self):
-        if not self.file_path: return
+        if not self.file_path:
+            messagebox.showwarning(t("common.warning"), t("watermark.no_source_message"))
+            return
         f_str = self.get_filter_string()
-        if self.preview_proc: 
+        if not f_str:
+            messagebox.showerror(t("common.warning"),
+                                 "Font file not found in assets/fonts/. Pick a different font or restore the missing TTF.")
+            return
+        if self.preview_proc:
             try: self.preview_proc.terminate()
             except Exception: pass
-        
+
         ffplay = get_binary_path("ffplay.exe")
         cmd = [
             ffplay, "-i", os.path.normpath(self.file_path), 
@@ -288,9 +295,14 @@ class TextBurnerTab(BaseTab):
         self.preview_proc = subprocess.Popen(cmd)
 
     def run_render(self):
-        if not self.file_path: return
+        if not self.file_path:
+            messagebox.showwarning(t("common.warning"), t("watermark.no_source_message"))
+            return
         f_str = self.get_filter_string()
-        if not f_str: return
+        if not f_str:
+            messagebox.showerror(t("common.warning"),
+                                 "Font file not found in assets/fonts/. Pick a different font or restore the missing TTF.")
+            return
         out = filedialog.asksaveasfilename(defaultextension=".mp4",
                                            filetypes=[("MP4", "*.mp4")])
         if not out: return
