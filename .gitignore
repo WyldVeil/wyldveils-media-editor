@@ -13,6 +13,9 @@ skin.json
 
 # Personal notes
 ToDo.txt
+TEST_PLAN.txt
+screenshot*.jpg
+screenshot*.png
 
 # Binaries (large; bundled in installer release)
 bin/
