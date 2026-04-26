@@ -396,32 +396,119 @@ class TrimmerTab(BaseTab):
                "-x", "800", "-y", "450", "-loglevel", "quiet"]
         self.preview_proc = subprocess.Popen(cmd, creationflags=CREATE_NO_WINDOW)
 
+    # ─── Keyframe probe ──────────────────────────────────────────────────
+    def _has_video_keyframe_in_range(self, ss: float, end: float) -> bool:
+        """
+        Return True if the source has any video keyframe whose presentation
+        timestamp falls within [ss, end]. Stream-copy can only start a clip
+        on a keyframe, so if none exists in the window the output will have
+        zero video frames - we use this to decide whether to fall back to
+        re-encode automatically. Returns True on probe failure (don't block
+        the user when we can't be sure).
+        """
+        try:
+            ffprobe = get_binary_path("ffprobe.exe")
+            if not os.path.isfile(ffprobe):
+                return True
+            # Use -read_intervals to limit decoding to the window of interest
+            # (much faster than scanning whole file for long videos).
+            window = f"{max(0.0, ss - 0.1):.3f}%{end + 0.1:.3f}"
+            r = subprocess.run(
+                [ffprobe, "-v", "error",
+                 "-read_intervals", window,
+                 "-select_streams", "v",
+                 "-show_entries", "packet=pts_time,flags",
+                 "-of", "csv=print_section=0",
+                 self.file_path],
+                capture_output=True, text=True, timeout=15,
+                creationflags=CREATE_NO_WINDOW,
+            )
+            for line in r.stdout.splitlines():
+                parts = line.strip().split(",")
+                if len(parts) < 2:
+                    continue
+                try:
+                    pts = float(parts[0])
+                except ValueError:
+                    continue
+                flags = parts[1]
+                if "K" in flags and ss <= pts <= end:
+                    return True
+            return False
+        except Exception:
+            return True
+
     # ─── Trim / Export ────────────────────────────────────────────────────
     def _run_trim(self):
         if not self.file_path:
             messagebox.showwarning(t("common.warning"), t("common.no_input"))
             return
-            
+
+        # Force any focused Entry to commit its typed value to the StringVar
+        # before we read times. Without this, on Windows a click on the
+        # Export button can fire the button command before <FocusOut> on the
+        # entry has had a chance to run _apply_typed_times, causing stale
+        # values from a prior trim to be used.
+        try:
+            self.focus_set()
+            self.update_idletasks()
+            self._apply_typed_times()
+        except Exception:
+            pass
+
         ss = parse_time(self._start_var.get())
         end = parse_time(self._end_var.get())
         dur = end - ss
-        
+
         if dur <= 0:
             messagebox.showerror(t("trimmer.invalid_range_error"), t("trimmer.invalid_range_message"))
             return
-            
+
         out = self._out_var.get().strip()
         if not out:
             out = filedialog.asksaveasfilename(defaultextension=".mp4",
                                                filetypes=[("MP4", "*.mp4")])
         if not out: return
         self._out_var.set(out)
-        
+
+        # Disable the Export button synchronously so a second click can't
+        # race in and queue a duplicate task before run_ffmpeg's after(0)
+        # disable takes effect.
+        try:
+            self._btn_trim.config(state="disabled")
+        except Exception:
+            pass
+
+        # Clear the console so prior runs' output doesn't muddle the log
+        # for this export.
+        try:
+            self.console.delete("1.0", tk.END)
+        except Exception:
+            pass
+
         ffmpeg = get_binary_path("ffmpeg.exe")
-        
-        if self._copy_mode.get():
-            cmd = [ffmpeg, "-ss", str(ss), "-i", self.file_path,
-                   "-t", str(dur), "-c", "copy",
+
+        # If the user picked stream-copy but the requested window contains
+        # no video keyframe, copy would produce an audio-only clip. Probe
+        # the source and silently fall back to re-encode for this run -
+        # their checkbox preference is preserved for future trims.
+        use_copy = self._copy_mode.get()
+        if use_copy and not self._has_video_keyframe_in_range(ss, end):
+            self.log(self.console,
+                     "⚠ No video keyframe in this range - falling back to "
+                     "re-encode so the output has video. (Stream-copy can "
+                     "only cut on keyframes; this clip's keyframes don't "
+                     "land inside the selected window.)")
+            use_copy = False
+
+        if use_copy:
+            # Use OUTPUT seek (-ss AFTER -i) for stream copy. Input seek
+            # (-ss before -i) is unreliable on codecs with sparse keyframes
+            # like VP9 - it silently lands on the wrong keyframe and the
+            # output ends up the wrong length regardless of -t. Output seek
+            # is slightly slower but always lines up correctly.
+            cmd = [ffmpeg, "-i", self.file_path,
+                   "-ss", str(ss), "-t", str(dur), "-c", "copy",
                    "-avoid_negative_ts", "make_zero",
                    "-movflags", t("dynamics.faststart"),
                    out, "-y"]
@@ -434,7 +521,7 @@ class TrimmerTab(BaseTab):
                    "-movflags", t("dynamics.faststart"),
                    out, "-y"]
             self.log(self.console, f"Re-encode trim: {fmt_time(ss)} – {fmt_time(end)}  CRF={self._crf_var.get()}")
-            
+
         self.run_ffmpeg(cmd, self.console,
                         on_done=lambda rc: self.show_result(rc, out),
                         btn=self._btn_trim, btn_label=t("trimmer.export_button"))

@@ -56,7 +56,7 @@
   "tab.chapter_markers": "เครื่องหมายบท",
   "tab.thumbnail_maker": "สร้างภาพขนาดย่อ",
   "tab.video_collage": "คอลลาจวิดีโอ",
-  "tab.youtube_downloader": "ดาวน์โหลด YouTube",
+  "tab.youtube_downloader": "ดาวน์โหลดวิดีโอ",
   "tab.silence_remover": "ลบความเงียบ",
   "tab.audio_extractor": "แยกเสียง",
   "tab.audio_replacer": "แทนที่เสียง",
@@ -2202,7 +2202,7 @@
   "app.status.ytdlp_update_failed": "การอัปเดตล้มเหลว",
   "karaoke.whisper_not_found": "ไม่พบเสียงกระซิบ คลิกติดตั้ง Whisper หรือเรียกใช้: pip install openai-whisper",
   "auto_subs.whisper_not_found": "ไม่พบ Whisper คลิกติดตั้ง Whisper หรือเรียกใช้: pip install openai-whisper",
-  "youtube.tab_description": "ดึงข้อมูล ดูตัวอย่าง และดาวน์โหลดวิดีโอ YouTube/เว็บ วาง yt-dlp.exe ใน bin/ หรือเรียกใช้: pip ติดตั้ง yt-dlp",
+  "youtube.tab_description": "ดึง ดูตัวอย่าง และดาวน์โหลดวิดีโอจากเว็บไซต์ที่รองรับผ่าน yt-dlp วาง yt-dlp.exe ใน bin/ หรือรัน: pip install yt-dlp",
   "msg.ffmpeg_update_success_title": "สำเร็จ",
   "msg.ffmpeg_update_failed_title": "ข้อผิดพลาด",
   "msg.ytdlp_update_title2": "yt-dlp Updater",
@@ -2435,5 +2435,6 @@
   "midifier.installing": "กำลังติดตั้งการพึ่งพา...",
   "midifier.starting": "กำลังเริ่มไปป์ไลน์ MIDIfier...",
   "midifier.complete": "การแปลง MIDI เสร็จสมบูรณ์!",
-  "midifier.fs_or_sf2_missing": "ไม่พบ FluidSynth หรือ SoundFont!"
+  "midifier.fs_or_sf2_missing": "ไม่พบ FluidSynth หรือ SoundFont!",
+  "tab.video_downloader": "ดาวน์โหลดวิดีโอ"
 }

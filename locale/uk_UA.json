@@ -56,7 +56,7 @@
   "tab.chapter_markers": "Позначки Розділів",
   "tab.thumbnail_maker": "Мініатюри",
   "tab.video_collage": "Відеоколаж",
-  "tab.youtube_downloader": "Завантажувач YouTube",
+  "tab.youtube_downloader": "Завантажувач відео",
   "tab.silence_remover": "Видалення Тиші",
   "tab.audio_extractor": "Витяг Аудіо",
   "tab.audio_replacer": "Заміна Аудіо",
@@ -2202,7 +2202,7 @@
   "app.status.ytdlp_update_failed": "Помилка оновлення",
   "karaoke.whisper_not_found": "Whisper не знайдено. Натисніть «Встановити Whisper» або запустіть: pip install openai-whisper",
   "auto_subs.whisper_not_found": "Whisper не знайдено. Клацніть «Встановити Whisper» або запустіть: pip install openai-whisper",
-  "youtube.tab_description": "Отримати, переглянути та завантажити відео YouTube/веб. Перемістіть yt-dlp.exe в bin/ або запустіть: pip install yt-dlp",
+  "youtube.tab_description": "Отримуйте, переглядайте та завантажуйте відео з підтримуваних сайтів через yt-dlp. Помістіть yt-dlp.exe у bin/ або запустіть: pip install yt-dlp",
   "msg.ffmpeg_update_success_title": "Успіх",
   "msg.ffmpeg_update_failed_title": "Помилка",
   "msg.ytdlp_update_title2": "yt-dlp Updater",
@@ -2435,5 +2435,6 @@
   "midifier.installing": "Встановлення залежностей...",
   "midifier.starting": "Запуск конвеєра MIDIfier...",
   "midifier.complete": "MIDIfікацію завершено!",
-  "midifier.fs_or_sf2_missing": "FluidSynth або SoundFont не знайдено!"
+  "midifier.fs_or_sf2_missing": "FluidSynth або SoundFont не знайдено!",
+  "tab.video_downloader": "Завантажувач відео"
 }

@@ -37,7 +37,7 @@ from tabs.visuals      import (MediaGeneratorTab, SpecialEffectsTab, LUTApplicat
                                 AnimatedZoomTab, TransitionStudioTab)
 
 from tabs.system       import (ScreenRecorderTab, BatchTab, AdvancedSettingsTab,
-                                SettingsTab)
+                                SettingsTab, HomeTab)
 
 from tabs.all_in_one   import AllInOneTab
 
@@ -47,6 +47,7 @@ PINNED = ("All-in-One Builder", AllInOneTab)
 # ── Hidden tools (accessible programmatically, not shown in sidebar nav) ──────
 HIDDEN = {
     "Settings": SettingsTab,
+    "Home":     HomeTab,
 }
 
 # ── Main tool registry (sidebar category → [(display_name, TabClass), ...]) ──
@@ -84,7 +85,7 @@ TOOLS = {
         ("Chapter Markers",    ChapterMarkersTab),
         ("Thumbnail Maker",    ThumbnailMakerTab),
         ("Video Collage",      VideoCollageTab),
-        ("YouTube Downloader", YouTubeDownloaderTab),
+        ("Video Downloader",   YouTubeDownloaderTab),
     ],
     "🔊  AUDIO ENGINEERING": [
         ("Silence Remover",     SilenceTab),

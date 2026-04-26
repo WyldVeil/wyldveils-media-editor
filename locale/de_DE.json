@@ -56,7 +56,7 @@
   "tab.chapter_markers": "Kapitelmarken",
   "tab.thumbnail_maker": "Vorschaubild-Ersteller",
   "tab.video_collage": "Video-Collage",
-  "tab.youtube_downloader": "YouTube-Downloader",
+  "tab.youtube_downloader": "Video-Downloader",
   "tab.silence_remover": "Stille entfernen",
   "tab.audio_extractor": "Audio-Extraktor",
   "tab.audio_replacer": "Audio ersetzen",
@@ -2202,7 +2202,7 @@
   "app.status.ytdlp_update_failed": "Update fehlgeschlagen",
   "karaoke.whisper_not_found": "Whisper nicht gefunden. Klicken Sie auf Whisper installieren oder führen Sie Folgendes aus: pip install openai-whisper",
   "auto_subs.whisper_not_found": "Whisper nicht gefunden. Klicken Sie auf „Whisper installieren“ oder führen Sie Folgendes aus: pip install openai-whisper",
-  "youtube.tab_description": "YouTube-/Webvideos abrufen, in der Vorschau anzeigen und herunterladen. Legen Sie yt-dlp.exe in bin/ ab oder führen Sie Folgendes aus: pip install yt-dlp",
+  "youtube.tab_description": "Videos von unterstützten Seiten via yt-dlp abrufen, in der Vorschau anzeigen und herunterladen. yt-dlp.exe in bin/ ablegen oder ausführen: pip install yt-dlp",
   "msg.ffmpeg_update_success_title": "Erfolg",
   "msg.ffmpeg_update_failed_title": "Fehler",
   "msg.ytdlp_update_title2": "yt-dlp Updater",
@@ -2435,5 +2435,6 @@
   "midifier.installing": "Abhängigkeiten werden installiert…",
   "midifier.starting": "MIDIfier-Pipeline wird gestartet…",
   "midifier.complete": "MIDIfizierung abgeschlossen!",
-  "midifier.fs_or_sf2_missing": "FluidSynth oder SoundFont nicht gefunden!"
+  "midifier.fs_or_sf2_missing": "FluidSynth oder SoundFont nicht gefunden!",
+  "tab.video_downloader": "Video-Downloader"
 }

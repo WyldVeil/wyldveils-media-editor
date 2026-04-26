@@ -56,7 +56,7 @@
   "tab.chapter_markers": "علامات الفصول",
   "tab.thumbnail_maker": "منشئ الصور المصغرة",
   "tab.video_collage": "كولاج الفيديو",
-  "tab.youtube_downloader": "محمِّل يوتيوب",
+  "tab.youtube_downloader": "محمِّل الفيديو",
   "tab.silence_remover": "إزالة الصمت",
   "tab.audio_extractor": "مستخرج الصوت",
   "tab.audio_replacer": "استبدال الصوت",
@@ -2202,7 +2202,7 @@
   "app.status.ytdlp_update_failed": "فشل التحديث",
   "karaoke.whisper_not_found": "لم يتم العثور على الهمس. انقر فوق تثبيت Whisper أو تشغيل: pip install openai-whisper",
   "auto_subs.whisper_not_found": "لم يتم العثور على Whisper. انقر فوق تثبيت Whisper أو تشغيل: pip install openai-whisper",
-  "youtube.tab_description": "جلب مقاطع فيديو YouTube/الويب ومعاينتها وتنزيلها. أسقط yt-dlp.exe في bin/ أو قم بتشغيل: pip install yt-dlp",
+  "youtube.tab_description": "جلب مقاطع الفيديو من المواقع المدعومة ومعاينتها وتنزيلها عبر yt-dlp. أسقط yt-dlp.exe في bin/ أو شغّل: pip install yt-dlp",
   "msg.ffmpeg_update_success_title": "نجاح",
   "msg.ffmpeg_update_failed_title": "خطأ",
   "msg.ytdlp_update_title2": "yt-dlp Updater",
@@ -2435,5 +2435,6 @@
   "midifier.installing": "جارٍ تثبيت التبعيات...",
   "midifier.starting": "جارٍ بدء خط معالجة MIDIfier...",
   "midifier.complete": "اكتمل تحويل MIDI!",
-  "midifier.fs_or_sf2_missing": "FluidSynth أو SoundFont مفقود!"
+  "midifier.fs_or_sf2_missing": "FluidSynth أو SoundFont مفقود!",
+  "tab.video_downloader": "محمِّل الفيديو"
 }

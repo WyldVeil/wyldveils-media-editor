@@ -11,6 +11,9 @@ libs/
 settings.json
 skin.json
 
+# Personal notes
+ToDo.txt
+
 # Binaries (large; bundled in installer release)
 bin/
 

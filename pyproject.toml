@@ -4,7 +4,7 @@ build-backend = "setuptools.backends.legacy:build"
 
 [project]
 name = "quintessential-video-editor"
-version = "1.13.0"
+version = "1.14.0"
 description = "Quintessential Video Editor: professional video production toolkit"
 requires-python = ">=3.10"
 dependencies = [

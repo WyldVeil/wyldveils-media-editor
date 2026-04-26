@@ -56,7 +56,7 @@
   "tab.chapter_markers": "Penanda Bab",
   "tab.thumbnail_maker": "Pembuat Imej Kecil",
   "tab.video_collage": "Kolaj Video",
-  "tab.youtube_downloader": "Muat Turun YouTube",
+  "tab.youtube_downloader": "Muat Turun Video",
   "tab.silence_remover": "Buang Senyap",
   "tab.audio_extractor": "Pengekstrak Audio",
   "tab.audio_replacer": "Ganti Audio",
@@ -2202,7 +2202,7 @@
   "app.status.ytdlp_update_failed": "Kemas Kini Gagal",
   "karaoke.whisper_not_found": "Bisikan tidak ditemui. Klik Install Whisper atau jalankan: pip install openai-whisper",
   "auto_subs.whisper_not_found": "Whisper not found. Klik Pasang Whisper atau jalankan: pip install openai-whisper",
-  "youtube.tab_description": "Ambil, pratonton dan muat turun video YouTube/web. Letakkan yt-dlp.exe dalam bin/ atau jalankan: pip install yt-dlp",
+  "youtube.tab_description": "Ambil, pratonton dan muat turun video dari laman yang disokong melalui yt-dlp. Letak yt-dlp.exe dalam bin/ atau jalankan: pip install yt-dlp",
   "msg.ffmpeg_update_success_title": "Kejayaan",
   "msg.ffmpeg_update_failed_title": "Ralat",
   "msg.ytdlp_update_title2": "yt-dlp Updater",
@@ -2435,5 +2435,6 @@
   "midifier.installing": "Memasang kebergantungan...",
   "midifier.starting": "Memulakan pipeline MIDIfier...",
   "midifier.complete": "Penukaran MIDI selesai!",
-  "midifier.fs_or_sf2_missing": "FluidSynth atau SoundFont tidak ditemui!"
+  "midifier.fs_or_sf2_missing": "FluidSynth atau SoundFont tidak ditemui!",
+  "tab.video_downloader": "Muat Turun Video"
 }

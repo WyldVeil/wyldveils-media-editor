@@ -56,7 +56,7 @@
   "tab.chapter_markers": "Chapter Markers",
   "tab.thumbnail_maker": "Thumbnail Maker",
   "tab.video_collage": "Video Collage",
-  "tab.youtube_downloader": "YouTube Downloader",
+  "tab.youtube_downloader": "Video Downloader",
   "tab.silence_remover": "Silence Remover",
   "tab.audio_extractor": "Audio Extractor",
   "tab.audio_replacer": "Audio Replacer",
@@ -2202,7 +2202,7 @@
   "app.status.ytdlp_update_failed": "Update Failed",
   "karaoke.whisper_not_found": "Whisper not found. Click Install Whisper or run: pip install openai-whisper",
   "auto_subs.whisper_not_found": "Whisper not found. Click Install Whisper or run: pip install openai-whisper",
-  "youtube.tab_description": "Fetch, preview and download YouTube/web videos. Drop yt-dlp.exe in bin/ or run: pip install yt-dlp",
+  "youtube.tab_description": "Fetch, preview and download videos from supported sites via yt-dlp. Drop yt-dlp.exe inside bin/ or run: pip install yt-dlp",
   "msg.ffmpeg_update_success_title": "Success",
   "msg.ffmpeg_update_failed_title": "Error",
   "msg.ytdlp_update_title2": "yt-dlp Updater",
@@ -2435,5 +2435,6 @@
   "midifier.installing": "Dey install dependencies...",
   "midifier.starting": "Dey start MIDIfier pipeline...",
   "midifier.complete": "MIDIfication don complete!",
-  "midifier.fs_or_sf2_missing": "FluidSynth or SoundFont dey miss!"
+  "midifier.fs_or_sf2_missing": "FluidSynth or SoundFont dey miss!",
+  "tab.video_downloader": "Video Downloader"
 }

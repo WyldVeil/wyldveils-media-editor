@@ -56,7 +56,7 @@
   "tab.chapter_markers": "অডিও সিঙ্ক শিফটার",
   "tab.thumbnail_maker": "দ্য মিউটার",
   "tab.video_collage": "অডিও ডায়নামিক্স",
-  "tab.youtube_downloader": "YouTube ডাউনলোডার",
+  "tab.youtube_downloader": "ভিডিও ডাউনলোডার",
   "tab.silence_remover": "নীরবতা মুছুন",
   "tab.audio_extractor": "অডিও এক্সট্র্যাক্টর",
   "tab.audio_replacer": "অডিও মিক্সার",
@@ -2202,7 +2202,7 @@
   "app.status.ytdlp_update_failed": "আপডেট ব্যর্থ হয়েছে",
   "karaoke.whisper_not_found": "হুইসপার পাওয়া যায়নি৷ Install Whisper ক্লিক করুন বা রান করুন: pip install openai-whisper",
   "auto_subs.whisper_not_found": "হুইস্পার পাওয়া যায়নি। ইন্সটল হুইস্পার ক্লিক করুন বা রান করুন: পিপ ইনস্টল openai-whisper",
-  "youtube.tab_description": "আনয়ন, প্রিভিউ এবং YouTube/ওয়েব ভিডিও ডাউনলোড করুন। yt-dlp.exe বিনে ফেলে দিন/ বা চালান: পিপ ইনস্টল yt-dlp",
+  "youtube.tab_description": "সমর্থিত সাইট থেকে ভিডিও আনুন, প্রিভিউ করুন এবং yt-dlp এর মাধ্যমে ডাউনলোড করুন। yt-dlp.exe বিনে রাখুন বা চালান: pip install yt-dlp",
   "msg.ffmpeg_update_success_title": "সাফল্য",
   "msg.ffmpeg_update_failed_title": "ত্রুটি",
   "msg.ytdlp_update_title2": "yt-dlp আপডেটার",
@@ -2435,5 +2435,6 @@
   "midifier.installing": "নির্ভরতা ইনস্টল করা হচ্ছে...",
   "midifier.starting": "MIDIfier পাইপলাইন শুরু হচ্ছে...",
   "midifier.complete": "MIDI রূপান্তর সম্পন্ন!",
-  "midifier.fs_or_sf2_missing": "FluidSynth বা SoundFont পাওয়া যায়নি!"
+  "midifier.fs_or_sf2_missing": "FluidSynth বা SoundFont পাওয়া যায়নি!",
+  "tab.video_downloader": "ভিডিও ডাউনলোডার"
 }

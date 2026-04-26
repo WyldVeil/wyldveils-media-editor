@@ -56,7 +56,7 @@
   "tab.chapter_markers": "Đánh Dấu Chương",
   "tab.thumbnail_maker": "Tạo Hình Thu Nhỏ",
   "tab.video_collage": "Ghép Ảnh Video",
-  "tab.youtube_downloader": "Tải YouTube",
+  "tab.youtube_downloader": "Tải Video",
   "tab.silence_remover": "Xóa Khoảng Lặng",
   "tab.audio_extractor": "Trích Xuất Âm Thanh",
   "tab.audio_replacer": "Thay Thế Âm Thanh",
@@ -2202,7 +2202,7 @@
   "app.status.ytdlp_update_failed": "Cập nhật không thành công",
   "karaoke.whisper_not_found": "Không tìm thấy lời thì thầm. Nhấp vào Cài đặt Whisper hoặc chạy: pip install openai-whisper",
   "auto_subs.whisper_not_found": "Không tìm thấy Whisper. Nhấp vào Cài đặt Whisper hoặc chạy: pip install openai-whisper",
-  "youtube.tab_description": "Tìm nạp, xem trước và tải xuống video YouTube/web. Thả yt-dlp.exe vào bin/ hoặc chạy: pip install yt-dlp",
+  "youtube.tab_description": "Tìm nạp, xem trước và tải xuống video từ các trang được hỗ trợ qua yt-dlp. Đặt yt-dlp.exe vào bin/ hoặc chạy: pip install yt-dlp",
   "msg.ffmpeg_update_success_title": "Thành công",
   "msg.ffmpeg_update_failed_title": "Lỗi",
   "msg.ytdlp_update_title2": "Trình cập nhật yt-dlp",
@@ -2435,5 +2435,6 @@
   "midifier.installing": "Đang cài đặt phụ thuộc...",
   "midifier.starting": "Đang khởi động đường ống MIDIfier...",
   "midifier.complete": "Chuyển đổi MIDI hoàn tất!",
-  "midifier.fs_or_sf2_missing": "Không tìm thấy FluidSynth hoặc SoundFont!"
+  "midifier.fs_or_sf2_missing": "Không tìm thấy FluidSynth hoặc SoundFont!",
+  "tab.video_downloader": "Tải Video"
 }

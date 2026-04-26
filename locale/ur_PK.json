@@ -56,7 +56,7 @@
   "tab.chapter_markers": "خاموشی ہٹانے والا",
   "tab.thumbnail_maker": "آڈیو ایکسٹریکٹر",
   "tab.video_collage": "آڈیو ریپلسر",
-  "tab.youtube_downloader": "YouTube ڈاؤنلوڈر",
+  "tab.youtube_downloader": "ویڈیو ڈاؤنلوڈر",
   "tab.silence_remover": "لاؤڈنس نارملائزر",
   "tab.audio_extractor": "آڈیو سنک شفٹر",
   "tab.audio_replacer": "Audio Replacer",
@@ -2202,7 +2202,7 @@
   "app.status.ytdlp_update_failed": "اپ ڈیٹ ناکام ہو گیا",
   "karaoke.whisper_not_found": "سرگوشی نہیں ملی۔ انسٹال Whisper پر کلک کریں یا چلائیں: pip install openai-whisper",
   "auto_subs.whisper_not_found": "Whisper نہیں ملا۔ انسٹال Whisper پر کلک کریں یا چلائیں: pip install openai-whisper",
-  "youtube.tab_description": "YouTube/web ویڈیوز حاصل کریں، پیش نظارہ کریں اور ڈاؤن لوڈ کریں۔ yt-dlp.exe کو bin/ میں ڈالیں یا چلائیں: pip install yt-dlp",
+  "youtube.tab_description": "yt-dlp کے ذریعے سپورٹڈ سائٹس سے ویڈیوز حاصل کریں، پیش نظارہ کریں اور ڈاؤن لوڈ کریں۔ yt-dlp.exe کو bin/ میں رکھیں یا چلائیں: pip install yt-dlp",
   "msg.ffmpeg_update_success_title": "کامیابی",
   "msg.ffmpeg_update_failed_title": "خرابی",
   "msg.ytdlp_update_title2": "yt-dlp اپڈیٹر",
@@ -2435,5 +2435,6 @@
   "midifier.installing": "انحصار انسٹال ہو رہے ہیں...",
   "midifier.starting": "MIDIfier پائپ لائن شروع ہو رہی ہے...",
   "midifier.complete": "MIDI تبدیلی مکمل!",
-  "midifier.fs_or_sf2_missing": "FluidSynth یا SoundFont نہیں ملا!"
+  "midifier.fs_or_sf2_missing": "FluidSynth یا SoundFont نہیں ملا!",
+  "tab.video_downloader": "ویڈیو ڈاؤنلوڈر"
 }

@@ -56,7 +56,7 @@
   "tab.chapter_markers": "चैप्टर मार्कर",
   "tab.thumbnail_maker": "थंबनेल मेकर",
   "tab.video_collage": "वीडियो कोलाज",
-  "tab.youtube_downloader": "YouTube डाउनलोडर",
+  "tab.youtube_downloader": "वीडियो डाउनलोडर",
   "tab.silence_remover": "साइलेंस रिमूवर",
   "tab.audio_extractor": "ऑडियो एक्सट्रेक्टर",
   "tab.audio_replacer": "ऑडियो रिप्लेसर",
@@ -2202,7 +2202,7 @@
   "app.status.ytdlp_update_failed": "अद्यतन विफल",
   "karaoke.whisper_not_found": "व्हिस्पर नहीं मिला। इंस्टॉल व्हिस्पर पर क्लिक करें या चलाएं: pip install openai-whisper",
   "auto_subs.whisper_not_found": "व्हिस्पर नहीं मिला। इंस्टॉल व्हिस्पर पर क्लिक करें या चलाएं: pip install openai-whisper",
-  "youtube.tab_description": "YouTube/वेब वीडियो प्राप्त करें, पूर्वावलोकन करें और डाउनलोड करें। yt-dlp.exe को बिन/ में छोड़ें या चलाएं: pip install yt-dlp",
+  "youtube.tab_description": "yt-dlp के माध्यम से समर्थित साइटों से वीडियो प्राप्त करें, पूर्वावलोकन करें और डाउनलोड करें। yt-dlp.exe को bin/ में रखें या चलाएँ: pip install yt-dlp",
   "msg.ffmpeg_update_success_title": "सफलता",
   "msg.ffmpeg_update_failed_title": "त्रुटि",
   "msg.ytdlp_update_title2": "yt-dlp अपडेटर",
@@ -2435,5 +2435,6 @@
   "midifier.installing": "निर्भरताएं इंस्टॉल हो रही हैं...",
   "midifier.starting": "MIDIfier पाइपलाइन शुरू हो रही है...",
   "midifier.complete": "MIDI रूपांतरण पूर्ण!",
-  "midifier.fs_or_sf2_missing": "FluidSynth या SoundFont नहीं मिला!"
+  "midifier.fs_or_sf2_missing": "FluidSynth या SoundFont नहीं मिला!",
+  "tab.video_downloader": "वीडियो डाउनलोडर"
 }

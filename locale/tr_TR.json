@@ -56,7 +56,7 @@
   "tab.chapter_markers": "Bölüm İşaretleri",
   "tab.thumbnail_maker": "Küçük Resim Oluşturucu",
   "tab.video_collage": "Video Kolaj",
-  "tab.youtube_downloader": "YouTube İndirici",
+  "tab.youtube_downloader": "Video İndirici",
   "tab.silence_remover": "Sessizlik Kaldırıcı",
   "tab.audio_extractor": "Ses Çıkarıcı",
   "tab.audio_replacer": "Ses Değiştirici",
@@ -2202,7 +2202,7 @@
   "app.status.ytdlp_update_failed": "Güncelleme Başarısız",
   "karaoke.whisper_not_found": "Fısıltı bulunamadı. Whisper'ı Kur'a tıklayın veya şunu çalıştırın: pip install openai-whisper",
   "auto_subs.whisper_not_found": "Whisper bulunamadı. Whisper'ı Kur'a tıklayın veya şunu çalıştırın: pip install openai-whisper",
-  "youtube.tab_description": "YouTube/web videolarını alın, önizleyin ve indirin. Yt-dlp.exe'yi kutuya bırakın/veya çalıştırın: pip install yt-dlp",
+  "youtube.tab_description": "yt-dlp aracılığıyla desteklenen sitelerden videoları alın, önizleyin ve indirin. yt-dlp.exe dosyasını bin/ klasörüne bırakın veya çalıştırın: pip install yt-dlp",
   "msg.ffmpeg_update_success_title": "Başarılı",
   "msg.ffmpeg_update_failed_title": "Hata",
   "msg.ytdlp_update_title2": "yt-dlp Güncelleyici",
@@ -2435,5 +2435,6 @@
   "midifier.installing": "Bağımlılıklar kuruluyor...",
   "midifier.starting": "MIDIfier iş hattı başlatılıyor...",
   "midifier.complete": "MIDI dönüştürme tamamlandı!",
-  "midifier.fs_or_sf2_missing": "FluidSynth veya SoundFont bulunamadı!"
+  "midifier.fs_or_sf2_missing": "FluidSynth veya SoundFont bulunamadı!",
+  "tab.video_downloader": "Video İndirici"
 }

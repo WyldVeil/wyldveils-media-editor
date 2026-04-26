@@ -56,7 +56,7 @@
   "tab.chapter_markers": "Markere de Capitol",
   "tab.thumbnail_maker": "Creator Miniaturi",
   "tab.video_collage": "Colaj Video",
-  "tab.youtube_downloader": "Descărcare YouTube",
+  "tab.youtube_downloader": "Descărcare Video",
   "tab.silence_remover": "Eliminare Tăcere",
   "tab.audio_extractor": "Extractor Audio",
   "tab.audio_replacer": "Înlocuire Audio",
@@ -2202,7 +2202,7 @@
   "app.status.ytdlp_update_failed": "Actualizare eșuată",
   "karaoke.whisper_not_found": "Whisper nu a fost găsit. Faceți clic pe Instalare Whisper sau rulați: pip install openai-whisper",
   "auto_subs.whisper_not_found": "Whisper nu a fost găsit. Faceți clic pe Instalați Whisper sau rulați: pip install openai-whisper",
-  "youtube.tab_description": "Preluați, previzualizați și descărcați videoclipuri YouTube/web. Introduceți yt-dlp.exe în bin/ sau rulați: pip install yt-dlp",
+  "youtube.tab_description": "Preluați, previzualizați și descărcați videoclipuri de pe site-urile acceptate prin yt-dlp. Puneți yt-dlp.exe în bin/ sau rulați: pip install yt-dlp",
   "msg.ffmpeg_update_success_title": "Succes",
   "msg.ffmpeg_update_failed_title": "Eroare",
   "msg.ytdlp_update_title2": "yt-dlp Updater",
@@ -2435,5 +2435,6 @@
   "midifier.installing": "Se instalează dependențele...",
   "midifier.starting": "Se pornește pipeline-ul MIDIfier...",
   "midifier.complete": "MIDIficare completă!",
-  "midifier.fs_or_sf2_missing": "FluidSynth sau SoundFont lipsește!"
+  "midifier.fs_or_sf2_missing": "FluidSynth sau SoundFont lipsește!",
+  "tab.video_downloader": "Descărcare Video"
 }

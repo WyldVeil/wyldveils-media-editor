@@ -56,7 +56,7 @@
   "tab.chapter_markers": "Chapter Markers",
   "tab.thumbnail_maker": "Thumbnail Maker",
   "tab.video_collage": "Video Collage",
-  "tab.youtube_downloader": "دانلود یوتیوب",
+  "tab.youtube_downloader": "دانلود ویدیو",
   "tab.silence_remover": "Silence Remover",
   "tab.audio_extractor": "Audio Extractor",
   "tab.audio_replacer": "Audio Replacer",
@@ -2202,7 +2202,7 @@
   "app.status.ytdlp_update_failed": "به روز رسانی انجام نشد",
   "karaoke.whisper_not_found": "Whisper یافت نشد. روی Install Whisper یا اجرا کلیک کنید: pip install openai-whisper",
   "auto_subs.whisper_not_found": "Whisper یافت نشد. روی Install Whisper یا اجرا کلیک کنید: pip install openai-whisper",
-  "youtube.tab_description": "ویدیوهای یوتیوب/وب را واکشی، پیش نمایش و دانلود کنید. yt-dlp.exe را در bin/ رها کنید یا اجرا کنید: pip install yt-dlp",
+  "youtube.tab_description": "ویدیوها را از سایت‌های پشتیبانی‌شده با yt-dlp واکشی، پیش‌نمایش و دانلود کنید. yt-dlp.exe را در bin/ قرار دهید یا اجرا کنید: pip install yt-dlp",
   "msg.ffmpeg_update_success_title": "Success",
   "msg.ffmpeg_update_failed_title": "خطا",
   "msg.ytdlp_update_title2": "yt-dlp Updater",
@@ -2435,5 +2435,6 @@
   "midifier.installing": "در حال نصب وابستگی‌ها...",
   "midifier.starting": "شروع خط لوله MIDIfier...",
   "midifier.complete": "تبدیل MIDI کامل شد!",
-  "midifier.fs_or_sf2_missing": "FluidSynth یا SoundFont یافت نشد!"
+  "midifier.fs_or_sf2_missing": "FluidSynth یا SoundFont یافت نشد!",
+  "tab.video_downloader": "دانلود ویدیو"
 }

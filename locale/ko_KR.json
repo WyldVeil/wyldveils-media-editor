@@ -56,7 +56,7 @@
   "tab.chapter_markers": "챕터 마커",
   "tab.thumbnail_maker": "썸네일 제작",
   "tab.video_collage": "영상 콜라주",
-  "tab.youtube_downloader": "유튜브 다운로더",
+  "tab.youtube_downloader": "동영상 다운로더",
   "tab.silence_remover": "무음 제거",
   "tab.audio_extractor": "오디오 추출",
   "tab.audio_replacer": "오디오 교체",
@@ -2202,7 +2202,7 @@
   "app.status.ytdlp_update_failed": "업데이트 실패",
   "karaoke.whisper_not_found": "귓속말을 찾을 수 없습니다. 속삭임 설치를 클릭하거나 다음을 실행하세요: pip install openai-whisper",
   "auto_subs.whisper_not_found": "속삭임을 찾을 수 없습니다. Install Whisper를 클릭하거나 다음을 실행하세요: pip install openai-whisper",
-  "youtube.tab_description": "YouTube/웹 비디오를 가져오고 미리 보고 다운로드하세요. bin/에 yt-dlp.exe를 삭제하거나 다음을 실행하세요. pip install yt-dlp",
+  "youtube.tab_description": "yt-dlp을 통해 지원되는 사이트에서 동영상을 가져오고 미리 보고 다운로드합니다. yt-dlp.exe를 bin/에 두거나 실행: pip install yt-dlp",
   "msg.ffmpeg_update_success_title": "성공",
   "msg.ffmpeg_update_failed_title": "오류",
   "msg.ytdlp_update_title2": "yt-dlp 업데이트 프로그램",
@@ -2435,5 +2435,6 @@
   "midifier.installing": "의존성 설치 중...",
   "midifier.starting": "MIDIfier 파이프라인 시작 중...",
   "midifier.complete": "MIDI 변환 완료!",
-  "midifier.fs_or_sf2_missing": "FluidSynth 또는 SoundFont를 찾을 수 없습니다!"
+  "midifier.fs_or_sf2_missing": "FluidSynth 또는 SoundFont를 찾을 수 없습니다!",
+  "tab.video_downloader": "동영상 다운로더"
 }

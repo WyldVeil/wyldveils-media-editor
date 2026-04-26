@@ -1,10 +1,15 @@
 """
-tab_youtubedownloader.py  ─  YouTube Downloader & Media Extractor
+tab_youtubedownloader.py  ─  Video Downloader & Media Extractor
 
-Full-featured yt-dlp front-end with real-time progress, audio extraction,
-SponsorBlock, chapter-aware trimming, batch/playlist queue, subtitle
-download, live stream recording, cookies/auth, download history, format
-filtering, and complete FFmpeg encode settings.
+Front-end UI for the third-party yt-dlp tool. Provides real-time progress,
+audio extraction, SponsorBlock, chapter-aware trimming, batch/playlist
+queue, subtitle download, live stream recording, cookies/auth, download
+history, format filtering, and complete FFmpeg encode settings.
+
+NOTE: yt-dlp is independent open-source software. WyldVeil Media Editor
+merely launches yt-dlp as a subprocess; it does not host, distribute, or
+modify it. See the on-screen disclaimer in _build_disclaimer() for the
+legal terms presented to the user.
 
 Requirements
 ------------
@@ -120,6 +125,11 @@ class YouTubeDownloaderTab(BaseTab):
         self._history: list[dict] = []
         self._history_visible = True
         self._batch_visible = False
+        # Last value we auto-suggested into the "Save to" box. Used to detect
+        # whether the user has manually changed it: if the box still matches
+        # the auto-suggestion, a new fetch is allowed to refresh it; if the
+        # user typed/browsed something else, we leave it alone.
+        self._last_auto_out: str = ""
 
         self._load_history()
         self._build_ui()
@@ -192,6 +202,9 @@ class YouTubeDownloaderTab(BaseTab):
             icon="▶",
         )
 
+        # 1b. Legal / third-party disclaimer (always visible)
+        self._build_disclaimer(root)
+
         # 2. URL row
         self._build_url_row(root)
 
@@ -225,6 +238,80 @@ class YouTubeDownloaderTab(BaseTab):
 
         # 11. History panel
         self._build_history_panel(root)
+
+    # ── Legal disclaimer ─────────────────────────────────────────────────────
+
+    def _build_disclaimer(self, root):
+        """
+        Always-visible legal notice. Distances WyldVeil Media Editor from
+        the third-party yt-dlp tool and the platforms it interacts with,
+        and shifts compliance/copyright responsibility onto the user.
+
+        Kept in English by design: legal language can shift meaning when
+        translated, and this notice exists to document the user's accepted
+        terms in a single canonical form.
+        """
+        outer = tk.Frame(
+            root, bg=CLR["bg"],
+            highlightthickness=1,
+            highlightbackground=CLR["orange"],
+        )
+        outer.pack(fill="x", padx=20, pady=(10, 4))
+
+        inner = tk.Frame(outer, bg=CLR["bg"])
+        inner.pack(fill="x", padx=12, pady=8)
+
+        tk.Label(
+            inner,
+            text="⚠  Important Notice: Third-Party Tool & User Responsibility",
+            font=(UI_FONT, 10, "bold"),
+            bg=CLR["bg"], fg=CLR["orange"],
+            anchor="w",
+        ).pack(fill="x")
+
+        body = (
+            "This feature is a user-interface front-end for "
+            "yt-dlp, an independent open-source command-line program "
+            "developed and maintained by third parties. WyldVeil Media "
+            "Editor is NOT affiliated with, endorsed by, or responsible "
+            "for yt-dlp, any website or platform yt-dlp may interact "
+            "with, or any content downloaded through it. yt-dlp is "
+            "executed as a separate process; WyldVeil neither hosts nor "
+            "modifies it.\n\n"
+            "By using this feature you acknowledge and agree that:\n"
+            "  •  You are solely responsible for complying with the "
+            "Terms of Service, robots.txt, and acceptable-use policies "
+            "of any website or platform you access.\n"
+            "  •  You will only download content that you own, that is "
+            "in the public domain, or for which you have explicit "
+            "permission from the rightsholder (including, where "
+            "applicable, fair use / fair dealing in your jurisdiction).\n"
+            "  •  You are solely responsible for complying with all "
+            "applicable copyright, intellectual-property, privacy, "
+            "broadcasting, and computer-misuse laws in your "
+            "jurisdiction and the jurisdiction of the content's origin.\n"
+            "  •  You will not use this software to circumvent technical "
+            "protection measures, paywalls, geographic restrictions, or "
+            "DRM where doing so is unlawful.\n"
+            "  •  This software is provided \"AS IS\", WITHOUT WARRANTY "
+            "OF ANY KIND, express or implied. To the maximum extent "
+            "permitted by law, WyldVeil and its contributors disclaim "
+            "all liability for any direct, indirect, incidental, "
+            "special, consequential, or punitive damages arising out "
+            "of or relating to your use of this feature, including "
+            "without limitation any claim by a rightsholder, platform "
+            "operator, regulator, or other third party.\n\n"
+            "If you do not agree to these terms, do not use this "
+            "feature."
+        )
+        tk.Label(
+            inner,
+            text=body,
+            font=(UI_FONT, 8),
+            bg=CLR["bg"], fg=CLR["fgdim"],
+            anchor="w", justify="left",
+            wraplength=900,
+        ).pack(fill="x", pady=(4, 0))
 
     # ── URL row ──────────────────────────────────────────────────────────────
 
@@ -1195,7 +1282,7 @@ class YouTubeDownloaderTab(BaseTab):
     def _on_fetch(self):
         url = self._url_var.get().strip()
         if not url:
-            messagebox.showwarning(t("common.warning"), "Paste a YouTube URL first.")
+            messagebox.showwarning(t("common.warning"), "Paste a video URL first.")
             return
         ytdlp = _find_ytdlp()
         if not ytdlp:
@@ -1262,15 +1349,21 @@ class YouTubeDownloaderTab(BaseTab):
         self._populate_chapters(info.get("chapters") or [])
         self._populate_subtitle_langs(info)
 
-        # Auto-suggest output filename (use a standard template for playlist mode to avoid overlap)
-        if not self._out_var.get().strip():
+        # Auto-suggest output filename. Refresh on every fetch unless the
+        # user has manually edited the field since our last suggestion -
+        # otherwise the first download's name would stick for every URL
+        # afterwards.
+        current = self._out_var.get().strip()
+        if (not current) or current == self._last_auto_out:
             safe = "".join(
                 c if c.isalnum() or c in " _-." else "_" for c in title)[:64]
             dl_dir = os.path.join(os.path.expanduser("~"), "Downloads")
             if self._playlist_var.get():
-                self._out_var.set(os.path.join(dl_dir, "%(title)s.%(ext)s"))
+                new_out = os.path.join(dl_dir, "%(title)s.%(ext)s")
             else:
-                self._out_var.set(os.path.join(dl_dir, safe.strip("_") + ".mp4"))
+                new_out = os.path.join(dl_dir, safe.strip("_") + ".mp4")
+            self._out_var.set(new_out)
+            self._last_auto_out = new_out
 
         if dur:
             self._end_var.set(_fmt_dur(dur))
@@ -1350,8 +1443,34 @@ class YouTubeDownloaderTab(BaseTab):
                 self._sub_lang_var.set(labeled[0])
 
     def _load_thumbnail(self, thumb_url: str):
+        # Pillow is an optional dep - try the project's auto-install helper
+        # first, then a plain import as a fallback. If both fail, surface
+        # the reason instead of silently leaving the canvas blank.
+        Image = ImageTk = None
         try:
-            from PIL import Image, ImageTk
+            from core.deps import require
+            pil = require("Pillow", import_name="PIL")
+            if pil is not None:
+                from PIL import Image as _Image, ImageTk as _ImageTk
+                Image, ImageTk = _Image, _ImageTk
+        except Exception:
+            pass
+        if Image is None:
+            try:
+                from PIL import Image as _Image, ImageTk as _ImageTk
+                Image, ImageTk = _Image, _ImageTk
+            except ImportError:
+                self.after(0, lambda: self._set_thumbnail_message(
+                    "Pillow not installed\n(pip install Pillow)\n\n"
+                    "Thumbnails disabled"))
+                self.after(0, lambda: self.log_tagged(
+                    self.console,
+                    "ℹ Thumbnail preview disabled: Pillow could not be "
+                    "loaded or auto-installed. Run `pip install Pillow` "
+                    "to enable.",
+                    "warn"))
+                return
+        try:
             req = urllib.request.Request(
                 thumb_url, headers={"User-Agent": "Mozilla/5.0"})
             with urllib.request.urlopen(req, timeout=12) as resp:
@@ -1361,13 +1480,27 @@ class YouTubeDownloaderTab(BaseTab):
             img = img.resize((256, 144), Image.LANCZOS)
             photo = ImageTk.PhotoImage(img)
             self.after(0, lambda p=photo: self._set_thumbnail(p))
-        except Exception:
-            pass
+        except Exception as exc:
+            err = str(exc) or type(exc).__name__
+            self.after(0, lambda e=err: self._set_thumbnail_message(
+                f"Thumbnail failed:\n{e[:80]}"))
+            self.after(0, lambda e=err: self.log_tagged(
+                self.console, f"⚠ Thumbnail load error: {e}", "warn"))
 
     def _set_thumbnail(self, photo):
         self._thumb_photo = photo
         self._thumb_canvas.delete("all")
         self._thumb_canvas.create_image(0, 0, anchor="nw", image=photo)
+
+    def _set_thumbnail_message(self, msg: str):
+        """Render a short status message into the thumbnail canvas."""
+        try:
+            self._thumb_canvas.delete("all")
+            self._thumb_canvas.create_text(
+                128, 72, text=msg, fill=CLR["fgdim"],
+                font=(UI_FONT, 9), justify="center", width=240)
+        except Exception:
+            pass
 
     # ─────────────────────────────────────────────────────────────────────────
     #  Preview
@@ -1376,7 +1509,7 @@ class YouTubeDownloaderTab(BaseTab):
     def _preview(self):
         url = self._url_var.get().strip()
         if not url:
-            messagebox.showwarning(t("common.warning"), "Paste a YouTube URL first.")
+            messagebox.showwarning(t("common.warning"), "Paste a video URL first.")
             return
         ytdlp = _find_ytdlp()
         if not ytdlp:
@@ -1407,7 +1540,7 @@ class YouTubeDownloaderTab(BaseTab):
                     ffplay = shutil.which("ffplay") or "ffplay"
                 self.preview_proc = subprocess.Popen(
                     [ffplay, "-autoexit",
-                     "-window_title", "YouTube Preview - Quintessential Video Editor",
+                     "-window_title", "Video Preview - Quintessential Video Editor",
                      stream_url],
                     creationflags=CREATE_NO_WINDOW)
                 self.after(0, lambda: self.log_tagged(
@@ -1523,14 +1656,52 @@ class YouTubeDownloaderTab(BaseTab):
             f"{pct:.1f}%  {size}  {speed}/s  ETA {eta}")
 
     def _cancel_download(self):
-        if self._active_proc:
+        # yt-dlp typically spawns ffmpeg (and optionally aria2c) as child
+        # processes. proc.terminate() only kills yt-dlp itself, leaving the
+        # children running and the download effectively continuing. Kill
+        # the whole process tree instead.
+        proc = self._active_proc
+        if proc:
             try:
-                self._active_proc.terminate()
-            except Exception:
-                pass
+                self._kill_process_tree(proc)
+            except Exception as exc:
+                self.log_tagged(
+                    self.console, f"⚠ Cancel error: {exc}", "warn")
         self._batch_running = False
         self.log_tagged(self.console, "⏹ Download cancelled.", "warn")
         self._reset_download_ui()
+
+    def _kill_process_tree(self, proc):
+        """Best-effort kill of *proc* and all of its descendants."""
+        if proc is None or proc.poll() is not None:
+            return
+        pid = proc.pid
+        import sys as _sys
+        if _sys.platform == "win32":
+            # taskkill /F /T kills the process tree forcefully.
+            try:
+                subprocess.run(
+                    ["taskkill", "/F", "/T", "/PID", str(pid)],
+                    capture_output=True, timeout=5,
+                    creationflags=CREATE_NO_WINDOW,
+                )
+            except Exception:
+                # Fallback to plain terminate if taskkill is unavailable.
+                try:
+                    proc.terminate()
+                except Exception:
+                    pass
+        else:
+            # POSIX: signal the whole process group.
+            try:
+                import os as _os
+                import signal as _signal
+                _os.killpg(_os.getpgid(pid), _signal.SIGTERM)
+            except Exception:
+                try:
+                    proc.terminate()
+                except Exception:
+                    pass
 
     def _reset_download_ui(self):
         self._btn_dl.config(state="normal", text=t("youtube.download"))
@@ -1681,7 +1852,7 @@ class YouTubeDownloaderTab(BaseTab):
     def _download(self):
         url = self._url_var.get().strip()
         if not url:
-            messagebox.showwarning(t("common.warning"), "Paste a YouTube URL first.")
+            messagebox.showwarning(t("common.warning"), "Paste a video URL first.")
             return
         out = self._out_var.get().strip()
         if not out:
@@ -1790,7 +1961,12 @@ class YouTubeDownloaderTab(BaseTab):
         cmd += trim_args
         cmd += ["-o", audio_out, url]
 
-        self.after(0, lambda: self._out_var.set(audio_out))
+        # Mirror the post-processed audio path back into the box, and treat
+        # it as still auto-managed so the next fetched URL refreshes it.
+        def _sync_audio_out(p=audio_out):
+            self._out_var.set(p)
+            self._last_auto_out = p
+        self.after(0, _sync_audio_out)
         self._stream_ytdlp(
             cmd,
             on_line=lambda s: self.log(self.console, s),
@@ -2069,9 +2245,10 @@ class YouTubeDownloaderTab(BaseTab):
 
     def _batch_stop(self):
         self._batch_running = False
-        if self._active_proc:
+        proc = self._active_proc
+        if proc:
             try:
-                self._active_proc.terminate()
+                self._kill_process_tree(proc)
             except Exception:
                 pass
         self.log_tagged(self.console, "⏹ Batch stopped.", "warn")

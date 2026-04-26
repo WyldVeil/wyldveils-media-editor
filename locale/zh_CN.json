@@ -56,7 +56,7 @@
   "tab.chapter_markers": "章节标记",
   "tab.thumbnail_maker": "缩略图制作",
   "tab.video_collage": "视频拼贴",
-  "tab.youtube_downloader": "YouTube下载器",
+  "tab.youtube_downloader": "视频下载器",
   "tab.silence_remover": "静音删除",
   "tab.audio_extractor": "音频提取",
   "tab.audio_replacer": "音频替换",
@@ -2202,7 +2202,7 @@
   "app.status.ytdlp_update_failed": "更新失败",
   "karaoke.whisper_not_found": "未找到 Whisper。单击安装 Whisper 或运行： pip install openai-whisper",
   "auto_subs.whisper_not_found": "Whisper 未找到。单击安装 Whisper 或运行： pip install openai-whisper",
-  "youtube.tab_description": "获取、预览和下载 YouTube/网络视频。将 yt-dlp.exe 放入 bin/ 或运行： pip install yt-dlp",
+  "youtube.tab_description": "通过 yt-dlp 从支持的站点获取、预览和下载视频。将 yt-dlp.exe 放入 bin/ 或运行: pip install yt-dlp",
   "msg.ffmpeg_update_success_title": "成功",
   "msg.ffmpeg_update_failed_title": "错误",
   "msg.ytdlp_update_title2": "yt-dlp 更新程序",
@@ -2435,5 +2435,6 @@
   "midifier.installing": "正在安装依赖项…",
   "midifier.starting": "启动MIDI化流程…",
   "midifier.complete": "MIDI化完成！",
-  "midifier.fs_or_sf2_missing": "未找到FluidSynth或SoundFont！"
+  "midifier.fs_or_sf2_missing": "未找到FluidSynth或SoundFont！",
+  "tab.video_downloader": "视频下载器"
 }

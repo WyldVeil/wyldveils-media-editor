@@ -56,7 +56,7 @@
   "tab.chapter_markers": "Alama za Sura",
   "tab.thumbnail_maker": "Tengeneza Picha Ndogo",
   "tab.video_collage": "Collage ya Video",
-  "tab.youtube_downloader": "Pakua YouTube",
+  "tab.youtube_downloader": "Pakua Video",
   "tab.silence_remover": "Ondoa Ukimya",
   "tab.audio_extractor": "Vuta Sauti",
   "tab.audio_replacer": "Badilisha Sauti",
@@ -2202,7 +2202,7 @@
   "app.status.ytdlp_update_failed": "Usasishaji Umeshindwa",
   "karaoke.whisper_not_found": "Mnong'ono haujapatikana. Bofya Sakinisha Whisper au endesha: pip install openai-whisper",
   "auto_subs.whisper_not_found": "Mnong'ono haupatikani. Bofya Sakinisha Whisper au endesha: pip install openai-whisper",
-  "youtube.tab_description": "Leta, hakiki na upakue video za YouTube/wavuti. Dondosha yt-dlp.exe kwenye bin/ au endesha: pip install yt-dlp",
+  "youtube.tab_description": "Leta, hakiki na pakua video kutoka tovuti zinazotumika kupitia yt-dlp. Weka yt-dlp.exe kwenye bin/ au endesha: pip install yt-dlp",
   "msg.ffmpeg_update_success_title": "Mafanikio",
   "msg.ffmpeg_update_failed_title": "Hitilafu",
   "msg.ytdlp_update_title2": "yt-dlp Kisasisho",
@@ -2435,5 +2435,6 @@
   "midifier.installing": "Inasakinisha vitegemezi...",
   "midifier.starting": "Inaanza mfumo wa MIDIfier...",
   "midifier.complete": "Ubadilishaji wa MIDI umekamilika!",
-  "midifier.fs_or_sf2_missing": "FluidSynth au SoundFont haipo!"
+  "midifier.fs_or_sf2_missing": "FluidSynth au SoundFont haipo!",
+  "tab.video_downloader": "Pakua Video"
 }

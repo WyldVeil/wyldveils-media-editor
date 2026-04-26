@@ -1,5 +1,5 @@
 """
-main.py  -  Quintessential Video Editor  ·  Version 1.13
+main.py  -  Quintessential Video Editor  ·  Version 1.14
 Application entry point. Builds the professional dark sidebar, registers
 every tab, and manages page navigation, search, and preview cleanup.
 """
@@ -82,13 +82,20 @@ class App(tk.Tk):
     def __init__(self):
         super().__init__()
 
-        self.title("Quintessential Video Editor  ·  Version 1.13")
+        self.title("Quintessential Video Editor  ·  Version 1.14")
         self.geometry("1480x920")
         self.minsize(1100, 700)
 
         # ── Global state ──────────────────────────────────────────────────────
         self.debug_mode = tk.BooleanVar(value=False)
         self._ytdlp_path = None
+        # Latest known versions (set by background fetches). Used by the
+        # status-bar click handlers to decide whether to offer an update or
+        # just confirm the local copy is current.
+        self._ffmpeg_latest_version: str | None = None
+        self._ytdlp_latest_version:  str | None = None
+        self._ffmpeg_local_version:  str | None = None
+        self._ytdlp_local_version:   str | None = None
 
         # ── Load skin FIRST - cascade options before any tab widget is created ─
         self._skin_data = get_skin(load_skin_name())
@@ -120,6 +127,37 @@ class App(tk.Tk):
         self.content_container = tk.Frame(
             root_frame, bg=self._skin_data["content"])
         self.content_container.pack(side="right", fill="both", expand=True)
+
+        # Persistent top bar with a Home button - always visible on top of
+        # every tab so the user can return to the launch screen at any time.
+        skin = self._skin_data
+        self._content_top_bar = tk.Frame(
+            self.content_container, bg=skin["panel"], height=32)
+        self._content_top_bar.pack(side="top", fill="x")
+        self._content_top_bar.pack_propagate(False)
+
+        self._home_btn = tk.Button(
+            self._content_top_bar, text="🏠  Home",
+            font=(UI_FONT, 9, "bold"),
+            bg=skin["panel"], fg=skin["fg"],
+            activebackground=skin.get("sb_hover", "#2A2A2A"),
+            activeforeground="#FFFFFF",
+            relief="flat", cursor="hand2",
+            bd=0, padx=14, pady=4,
+            command=lambda: self.show_page("Home"))
+        self._home_btn.pack(side="left", padx=10, pady=4)
+
+        tk.Frame(self.content_container,
+                 bg=skin.get("border", "#2C2C2C"),
+                 height=1).pack(side="top", fill="x")
+
+        # Inner content area where the active tab is actually packed.
+        # Tabs were previously parented to content_container directly;
+        # now they go inside content_area which leaves the top bar
+        # untouched between page swaps.
+        self._content_area = tk.Frame(
+            self.content_container, bg=skin["content"])
+        self._content_area.pack(side="top", fill="both", expand=True)
 
         self.pages           = {}   # name → tab instance (None until first visit)
         self._tab_classes    = {}   # name → tab class (for lazy init)
@@ -167,7 +205,7 @@ class App(tk.Tk):
         _qmgr.set_tk_root(self)
         _qmgr.register_update_callback(self._update_queue_status)
 
-        self.show_page("Crossfader")
+        self.show_page("Home")
 
         # ── Drag-and-drop file loading ────────────────────────────────────────
         self._init_drag_drop()
@@ -313,23 +351,98 @@ class App(tk.Tk):
         except Exception:
             pass
 
+    # ── Version helpers (network) ────────────────────────────────────────────
+    @staticmethod
+    def _fetch_latest_ffmpeg_version():
+        """Return the latest FFmpeg release tag from gyan.dev, or None on failure."""
+        import urllib.request
+        try:
+            with urllib.request.urlopen(
+                "https://www.gyan.dev/ffmpeg/builds/release-version",
+                timeout=4) as r:
+                txt = r.read().decode("utf-8").strip()
+                return txt.split("-")[0] or None
+        except Exception:
+            return None
+
+    @staticmethod
+    def _fetch_latest_ytdlp_version():
+        """Return the latest yt-dlp release tag from GitHub, or None on failure."""
+        import urllib.request, json as _json
+        try:
+            req = urllib.request.Request(
+                "https://api.github.com/repos/yt-dlp/yt-dlp/releases/latest",
+                headers={"User-Agent": "QVE-update-check"})
+            with urllib.request.urlopen(req, timeout=4) as r:
+                data = _json.loads(r.read().decode("utf-8"))
+                tag = (data.get("tag_name") or "").lstrip("v").strip()
+                return tag or None
+        except Exception:
+            return None
+
+    # ── FFmpeg status / update ───────────────────────────────────────────────
     def _check_ffmpeg(self):
+        """Read local FFmpeg version, then asynchronously compare with latest."""
+        local = None
         try:
             ffmpeg = get_binary_path("ffmpeg.exe")
             r = subprocess.run([ffmpeg, "-version"], capture_output=True,
                                text=True, timeout=5, creationflags=CREATE_NO_WINDOW)
             for part in (r.stdout or "").split():
                 if part and (part[0].isdigit() or part.startswith("n")):
-                    ver = part.lstrip("n").split("-")[0]
-                    self.after(0, lambda v=ver: self._status_ffmpeg.config(
-                        text=t("app.status.ffmpeg_click_update", v=v), fg=self._skin_data["accent"]))
-                    return
-            self.after(0, lambda: self._status_ffmpeg.config(text=t("app.status.ffmpeg_ok")))
+                    local = part.lstrip("n").split("-")[0]
+                    break
         except Exception:
+            local = None
+
+        if not local:
+            self._ffmpeg_local_version = None
             self.after(0, lambda: self._status_ffmpeg.config(
-                text=t("app.status.ffmpeg_missing_click_install"), fg=self._skin_data["red"]))
+                text=t("app.status.ffmpeg_missing_click_install"),
+                fg=self._skin_data["red"], cursor="hand2"))
+            return
+
+        self._ffmpeg_local_version = local
+        # Show local version with "checking..." while we hit the network.
+        self.after(0, lambda v=local: self._status_ffmpeg.config(
+            text=f"FFmpeg {v} (checking…)",
+            fg=self._skin_data["fgdim"], cursor="watch"))
+        threading.Thread(
+            target=self._compare_ffmpeg_versions,
+            args=(local,), daemon=True).start()
+
+    def _compare_ffmpeg_versions(self, local: str):
+        latest = self._fetch_latest_ffmpeg_version()
+        self._ffmpeg_latest_version = latest
+        skin = self._skin_data
+
+        if latest is None:
+            # Offline / fetch failed - leave click-to-update available so the
+            # user can still try to refresh manually.
+            self.after(0, lambda v=local: self._status_ffmpeg.config(
+                text=f"FFmpeg {v} (offline)",
+                fg=skin["fgdim"], cursor="hand2"))
+            return
+
+        if latest == local:
+            self.after(0, lambda v=local: self._status_ffmpeg.config(
+                text=f"FFmpeg {v} (up to date)",
+                fg=skin["green"], cursor="arrow"))
+        else:
+            self.after(0, lambda v=local, n=latest: self._status_ffmpeg.config(
+                text=f"FFmpeg {v} → {n} (Click to Update)",
+                fg=skin["orange"], cursor="hand2"))
 
     def _prompt_ffmpeg_update(self):
+        # If we already know the local copy is current, just confirm and bail
+        # out instead of triggering a pointless re-download.
+        if (self._ffmpeg_latest_version
+                and self._ffmpeg_local_version
+                and self._ffmpeg_latest_version == self._ffmpeg_local_version):
+            messagebox.showinfo(
+                t("msg.ffmpeg_update_title"),
+                f"FFmpeg {self._ffmpeg_local_version} is already up to date.")
+            return
         if not messagebox.askyesno(t("msg.ffmpeg_update_title"), t("msg.ffmpeg_update_confirm")):
             return
         self._status_ffmpeg.config(text=t("app.status.ffmpeg_downloading"), fg=self._skin_data["orange"])
@@ -343,15 +456,52 @@ class App(tk.Tk):
                 self.after(0, lambda: messagebox.showinfo(t("msg.ffmpeg_update_success_title"), t("msg.ffmpeg_update_success")))
             else:
                 self.after(0, lambda: messagebox.showerror(t("msg.ffmpeg_update_failed_title"), t("msg.ffmpeg_update_failed")))
-                
+
         threading.Thread(target=_task, daemon=True).start()
 
+    # ── yt-dlp status / update ───────────────────────────────────────────────
     def set_ytdlp_status(self, version: str, bin_path: str):
+        """Called by the YouTube tab once it's resolved a yt-dlp binary."""
         self._ytdlp_path = bin_path
-        self._status_ytdlp.config(text=t("app.status.ytdlp_click_update", v=version))
+        self._ytdlp_local_version = version
+        # Show "checking..." while we ask GitHub for the latest tag.
+        self._status_ytdlp.config(
+            text=f"yt-dlp v{version} (checking…)",
+            fg=self._skin_data["fgdim"], cursor="watch")
+        threading.Thread(
+            target=self._compare_ytdlp_versions,
+            args=(version,), daemon=True).start()
+
+    def _compare_ytdlp_versions(self, local: str):
+        latest = self._fetch_latest_ytdlp_version()
+        self._ytdlp_latest_version = latest
+        skin = self._skin_data
+
+        if latest is None:
+            self.after(0, lambda v=local: self._status_ytdlp.config(
+                text=f"yt-dlp v{v} (offline)",
+                fg=skin["fgdim"], cursor="hand2"))
+            return
+
+        if latest == local:
+            self.after(0, lambda v=local: self._status_ytdlp.config(
+                text=f"yt-dlp v{v} (up to date)",
+                fg=skin["green"], cursor="arrow"))
+        else:
+            self.after(0, lambda v=local, n=latest: self._status_ytdlp.config(
+                text=f"yt-dlp v{v} → v{n} (Click to Update)",
+                fg=skin["orange"], cursor="hand2"))
 
     def _update_ytdlp_process(self):
         if not self._ytdlp_path:
+            return
+        # Already current? Don't run -U; just confirm.
+        if (self._ytdlp_latest_version
+                and self._ytdlp_local_version
+                and self._ytdlp_latest_version == self._ytdlp_local_version):
+            messagebox.showinfo(
+                t("msg.ytdlp_update_title"),
+                f"yt-dlp v{self._ytdlp_local_version} is already up to date.")
             return
         if not messagebox.askyesno(t("msg.ytdlp_update_title"), t("msg.ytdlp_update_confirm")):
             return
@@ -368,10 +518,10 @@ class App(tk.Tk):
                 self.after(0, lambda: self.set_ytdlp_status(new_ver, self._ytdlp_path))
                 self.after(0, lambda: self.set_status(t("msg.ytdlp_update_complete"), color=self._skin_data["green"]))
                 self.after(0, lambda: messagebox.showinfo(t("msg.ytdlp_update_title2"), r.stdout))
-            except Exception as e:
+            except Exception:
                 self.after(0, lambda: self.set_status(t("msg.ytdlp_update_failed"), color=self._skin_data["red"]))
                 self.after(0, lambda: self._status_ytdlp.config(text=t("app.status.ytdlp_update_failed")))
-                
+
         threading.Thread(target=_task, daemon=True).start()
 
     def _update_queue_status(self):
@@ -557,6 +707,9 @@ class App(tk.Tk):
 
         m_file = _mksub()
         mb.add_cascade(label="File", menu=m_file)
+        m_file.add_command(label="Home",
+                           command=lambda: self.show_page("Home"))
+        m_file.add_separator()
         m_file.add_command(label="Open video file…",
                            command=self._menu_open_file, accelerator="Ctrl+O")
         m_file.add_separator()
@@ -594,7 +747,7 @@ class App(tk.Tk):
                   "WebM Maker", "Watermarker", "Image Watermark", "Hard-Subber",
                   "Auto-Subtitles", "Animated Titles", "Frame Extractor",
                   "Intro/Outro Maker", "Slideshow Maker", "Chapter Markers",
-                  "Thumbnail Maker", "Video Collage", "YouTube Downloader"]:
+                  "Thumbnail Maker", "Video Collage", "Video Downloader"]:
             m_social.add_command(label=n, command=lambda n=n: self.show_page(n))
 
         m_audio = _mksub()
@@ -947,7 +1100,7 @@ class App(tk.Tk):
 
     def _menu_about(self):
         messagebox.showinfo("About Quintessential Video Editor",
-            "Quintessential Video Editor  ·  Version 1.13\n"
+            "Quintessential Video Editor  ·  Version 1.14\n"
             "Version {}\n\n"
             "A self-contained video and audio processing suite\n"
             "powered by FFmpeg.\n\n"
@@ -1179,7 +1332,7 @@ class App(tk.Tk):
         tk.Frame(footer, bg=BORDER, height=1).pack(fill="x")
         fi = tk.Frame(footer, bg=SB_BG)
         fi.pack(fill="x", padx=14, pady=7)
-        tk.Label(fi, text="v{}  Version 1.13".format(APP_VERSION),
+        tk.Label(fi, text="v{}  Version 1.14".format(APP_VERSION),
                  bg=SB_BG, fg="#343434",
                  font=(UI_FONT, 8)).pack(side="left")
         self.debug_cb = tk.Checkbutton(
@@ -1282,17 +1435,26 @@ class App(tk.Tk):
         if self.pages.get(page_name) is None and page_name in self._tab_classes:
             try:
                 self.pages[page_name] = self._tab_classes[page_name](
-                    self.content_container)
+                    self._content_area)
             except Exception as exc:
                 self.log_debug(f"Error loading {page_name}: {exc}")
                 self.pages[page_name] = PlaceholderTab(
-                    self.content_container, page_name)
+                    self._content_area, page_name)
+            # The Home tab needs a way to navigate to other tabs. Inject
+            # the navigator after construction (avoids passing the App
+            # instance into the tab constructor).
+            page = self.pages[page_name]
+            if hasattr(page, "set_navigator"):
+                try:
+                    page.set_navigator(self.show_page)
+                except Exception:
+                    pass
 
         if page_name not in self.pages or self.pages[page_name] is None:
             return
 
         # Handle Contextual Status Bar items
-        if page_name == "YouTube Downloader":
+        if page_name == "Video Downloader":
             self._status_ytdlp.pack(side="right", padx=(0, 6), before=self._status_ffmpeg)
         else:
             self._status_ytdlp.pack_forget()

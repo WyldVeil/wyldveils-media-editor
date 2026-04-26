@@ -56,7 +56,7 @@
   "tab.chapter_markers": "Hoofdstukmarkeringen",
   "tab.thumbnail_maker": "Miniatuur Maker",
   "tab.video_collage": "Video Collage",
-  "tab.youtube_downloader": "YouTube Downloader",
+  "tab.youtube_downloader": "Video Downloader",
   "tab.silence_remover": "Stilte Verwijderen",
   "tab.audio_extractor": "Audio-extractor",
   "tab.audio_replacer": "Audio Vervangen",
@@ -2202,7 +2202,7 @@
   "app.status.ytdlp_update_failed": "Update mislukt",
   "karaoke.whisper_not_found": "Fluister niet gevonden. Klik op Whisper installeren of voer uit: pip install openai-whisper",
   "auto_subs.whisper_not_found": "Whisper niet gevonden. Klik op Whisper installeren of uitvoeren: pip install openai-whisper",
-  "youtube.tab_description": "YouTube/webvideo's ophalen, bekijken en downloaden. Zet yt-dlp.exe neer in bin/ of voer uit: pip installeer yt-dlp",
+  "youtube.tab_description": "Video's van ondersteunde sites ophalen, bekijken en downloaden via yt-dlp. Plaats yt-dlp.exe in bin/ of voer uit: pip install yt-dlp",
   "msg.ffmpeg_update_success_title": "Succes",
   "msg.ffmpeg_update_failed_title": "Fout",
   "msg.ytdlp_update_title2": "yt-dlp Updater",
@@ -2435,5 +2435,6 @@
   "midifier.installing": "Afhankelijkheden installeren...",
   "midifier.starting": "MIDIfier-pipeline starten...",
   "midifier.complete": "MIDIficatie voltooid!",
-  "midifier.fs_or_sf2_missing": "FluidSynth of SoundFont ontbreekt!"
+  "midifier.fs_or_sf2_missing": "FluidSynth of SoundFont ontbreekt!",
+  "tab.video_downloader": "Video Downloader"
 }
