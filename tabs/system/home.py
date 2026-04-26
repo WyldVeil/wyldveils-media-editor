@@ -178,19 +178,36 @@ class HomeTab(BaseTab):
             self._render_grid(body, favs)
             tk.Frame(body, bg=CLR["bg"], height=10).pack(fill="x")
 
-        # 2. Each TOOLS category
-        # The pinned All-in-One gets its own "Quick Tools" section first if
-        # it isn't already favourited.
+        # 2. Quick Tools row at the top: All-in-One Builder + Advanced
+        # Settings, both pinned for fast access. Advanced Settings is
+        # also a member of the SYSTEM category but we render it up here
+        # instead so it's one click from the launch screen.
+        quick_items = []
         if PINNED:
             aio_sidebar_key = "⚡ " + PINNED[0]
+            quick_items.append((aio_sidebar_key, aio_sidebar_key))
+        # Cog-iconned Advanced Settings card. Navigation target stays
+        # "Advanced Settings" so the existing show_page route keeps
+        # working untouched.
+        if "Advanced Settings" in valid_names:
+            quick_items.append(("Advanced Settings",
+                                "⚙  Advanced Settings"))
+
+        if quick_items:
             self._render_section_header(body, "⚡  Quick Tools",
                                         accent=CLR["accent"])
-            self._render_grid(body, [aio_sidebar_key])
+            self._render_grid(body, quick_items)
             tk.Frame(body, bg=CLR["bg"], height=10).pack(fill="x")
 
+        # 3. Each TOOLS category. Skip the items already shown up top so
+        # they don't render twice.
+        skip = {"Advanced Settings"}
         for category, items in TOOLS.items():
+            visible = [n for n, _ in items if n not in skip]
+            if not visible:
+                continue
             self._render_section_header(body, category)
-            self._render_grid(body, [n for n, _ in items])
+            self._render_grid(body, visible)
             tk.Frame(body, bg=CLR["bg"], height=10).pack(fill="x")
 
     def _render_section_header(self, parent, label, accent=None):
@@ -207,8 +224,13 @@ class HomeTab(BaseTab):
         rule = tk.Frame(parent, bg=CLR["border"], height=1)
         rule.pack(fill="x", padx=20)
 
-    def _render_grid(self, parent, names):
-        if not names:
+    def _render_grid(self, parent, items):
+        """
+        items may be either a list of names (strings) or a list of
+        (name, display) tuples. The name is the navigation target and
+        favourite key; display is the rendered card label.
+        """
+        if not items:
             return
         grid = tk.Frame(parent, bg=CLR["bg"])
         grid.pack(fill="x", padx=20, pady=(8, 0))
@@ -221,9 +243,13 @@ class HomeTab(BaseTab):
         col_w = self._CARD_WIDTH + 2 * self._GRID_PAD_X
         cols = max(self._MIN_COLS, min(self._MAX_COLS, max(1, avail // col_w)))
 
-        for i, name in enumerate(names):
+        for i, item in enumerate(items):
+            if isinstance(item, tuple):
+                name, display = item
+            else:
+                name, display = item, item
             r, c = divmod(i, cols)
-            self._build_card(grid, name).grid(
+            self._build_card(grid, name, display).grid(
                 row=r, column=c,
                 padx=self._GRID_PAD_X, pady=self._GRID_PAD_Y,
                 sticky="nsew",
@@ -231,8 +257,10 @@ class HomeTab(BaseTab):
         for c in range(cols):
             grid.grid_columnconfigure(c, weight=1, uniform="cards")
 
-    def _build_card(self, parent, name):
+    def _build_card(self, parent, name, display=None):
         """A single tab card: clickable body + star toggle on the right."""
+        if display is None:
+            display = name
         is_fav = self._is_fav(name)
         card = tk.Frame(
             parent, bg=CLR["panel"],
@@ -245,7 +273,7 @@ class HomeTab(BaseTab):
 
         # Tab name (left, fills space)
         name_lbl = tk.Label(
-            card, text=name,
+            card, text=display,
             font=(UI_FONT, 10, "bold"),
             bg=CLR["panel"], fg=CLR["fg"],
             anchor="w", padx=12,

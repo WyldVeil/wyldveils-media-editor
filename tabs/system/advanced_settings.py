@@ -234,11 +234,11 @@ class AdvancedSettingsTab(BaseTab):
         vsb.pack(side="right", fill="y")
         canvas.pack(side="left", fill="both", expand=True)
         body = tk.Frame(canvas, bg=CLR["bg"])
-        bw = canvas.create_window((0, 0), window=body, anchor="nw")
+        canvas_win = canvas.create_window((0, 0), window=body, anchor="nw")
         body.bind("<Configure>",
                   lambda _e: canvas.configure(scrollregion=canvas.bbox("all")))
         canvas.bind("<Configure>",
-                    lambda e: canvas.itemconfig(bw, width=e.width))
+                    lambda e, w=canvas_win: canvas.itemconfig(w, width=e.width))
 
         tk.Label(body,
                  text="Network settings apply to all in-app fetches "
