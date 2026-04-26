@@ -355,9 +355,9 @@ class App(tk.Tk):
     @staticmethod
     def _fetch_latest_ffmpeg_version():
         """Return the latest FFmpeg release tag from gyan.dev, or None on failure."""
-        import urllib.request
         try:
-            with urllib.request.urlopen(
+            from core import network as _net
+            with _net.urlopen(
                 "https://www.gyan.dev/ffmpeg/builds/release-version",
                 timeout=4) as r:
                 txt = r.read().decode("utf-8").strip()
@@ -368,12 +368,13 @@ class App(tk.Tk):
     @staticmethod
     def _fetch_latest_ytdlp_version():
         """Return the latest yt-dlp release tag from GitHub, or None on failure."""
-        import urllib.request, json as _json
+        import json as _json
         try:
-            req = urllib.request.Request(
+            from core import network as _net
+            with _net.urlopen(
                 "https://api.github.com/repos/yt-dlp/yt-dlp/releases/latest",
-                headers={"User-Agent": "QVE-update-check"})
-            with urllib.request.urlopen(req, timeout=4) as r:
+                timeout=4,
+                headers={"User-Agent": "QVE-update-check"}) as r:
                 data = _json.loads(r.read().decode("utf-8"))
                 tag = (data.get("tag_name") or "").lstrip("v").strip()
                 return tag or None

@@ -272,12 +272,14 @@ def get_local_version() -> str:
 
 def get_latest_online_version() -> str:
     """
-    Fetch the latest FFmpeg release version from gyan.dev (3 s timeout).
+    Fetch the latest FFmpeg release version from gyan.dev.
     Falls back to the local version if the network is unavailable.
+    Honours the user's network settings (proxy, timeout, SSL).
     """
     url = "https://www.gyan.dev/ffmpeg/builds/release-version"
     try:
-        with urllib.request.urlopen(url, timeout=3) as response:
+        from core import network as _net
+        with _net.urlopen(url, timeout=4) as response:
             latest = response.read().decode("utf-8").strip()
             return latest.split("-")[0]
     except Exception as exc:
@@ -308,7 +310,14 @@ def download_and_extract_ffmpeg(log_func) -> bool:
 
     try:
         log_func("Connecting to gyan.dev …")
-        urllib.request.urlretrieve(url, zip_path)
+        # Stream the zip via the network helper so the user's proxy /
+        # timeout / SSL settings apply.
+        from core import network as _net
+        with _net.urlopen(url, timeout=120) as resp, open(zip_path, "wb") as fh:
+            chunk = resp.read(1 << 20)
+            while chunk:
+                fh.write(chunk)
+                chunk = resp.read(1 << 20)
         log_func("Download complete. Extracting …")
 
         targets = {"ffmpeg.exe", "ffplay.exe", "ffprobe.exe"}

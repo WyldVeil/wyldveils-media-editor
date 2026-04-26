@@ -48,6 +48,7 @@ class AdvancedSettingsTab(BaseTab):
 
         self._build_ffmpeg_tab(nb)
         self._build_defaults_tab(nb)
+        self._build_networking_tab(nb)
         self._build_skins_tab(nb)
         self._build_language_tab(nb)
         self._build_system_tab(nb)
@@ -216,6 +217,393 @@ class AdvancedSettingsTab(BaseTab):
             self.save_lbl.config(text=t("advanced_settings.settings_saved"), fg=CLR["green"])
         else:
             self.save_lbl.config(text=t("advanced_settings.save_failed"), fg=CLR["red"])
+
+    # ─── Networking ───────────────────────────────────────────────────────────
+    def _build_networking_tab(self, nb):
+        from core import network as _net
+
+        f = ttk.Frame(nb)
+        nb.add(f, text="  Networking  ")
+
+        # Scrollable body, since the form has many rows.
+        outer = tk.Frame(f, bg=CLR["bg"])
+        outer.pack(fill="both", expand=True)
+        canvas = tk.Canvas(outer, bg=CLR["bg"], highlightthickness=0)
+        vsb = ttk.Scrollbar(outer, orient="vertical", command=canvas.yview)
+        canvas.configure(yscrollcommand=vsb.set)
+        vsb.pack(side="right", fill="y")
+        canvas.pack(side="left", fill="both", expand=True)
+        body = tk.Frame(canvas, bg=CLR["bg"])
+        bw = canvas.create_window((0, 0), window=body, anchor="nw")
+        body.bind("<Configure>",
+                  lambda _e: canvas.configure(scrollregion=canvas.bbox("all")))
+        canvas.bind("<Configure>",
+                    lambda e: canvas.itemconfig(bw, width=e.width))
+
+        tk.Label(body,
+                 text="Network settings apply to all in-app fetches "
+                      "(version checks, thumbnails) and to every yt-dlp / "
+                      "ffmpeg / pip subprocess started by the app.",
+                 font=(UI_FONT, 9), bg=CLR["bg"], fg=CLR["fgdim"],
+                 wraplength=720, justify="left").pack(
+            anchor="w", padx=20, pady=(14, 8))
+
+        # Load saved values into form variables.
+        cfg = _net.get()
+        self._net_vars = {}
+        for key, default in _net.DEFAULTS.items():
+            val = cfg.get(key, default)
+            if isinstance(default, bool):
+                v = tk.BooleanVar(value=bool(val))
+            else:
+                v = tk.StringVar(value="" if val is None else str(val))
+            self._net_vars[key] = v
+
+        def _section(parent, title):
+            lf = tk.LabelFrame(parent, text=f"  {title}  ",
+                               padx=14, pady=10,
+                               bg=CLR["bg"], fg=CLR["fgdim"],
+                               font=(UI_FONT, 9, "bold"),
+                               bd=1, relief="solid")
+            lf.pack(fill="x", padx=20, pady=6)
+            return lf
+
+        def _row(parent, label, key, widget_factory, hint=""):
+            r = tk.Frame(parent, bg=CLR["bg"])
+            r.pack(fill="x", pady=3)
+            tk.Label(r, text=label, font=(UI_FONT, 9),
+                     width=22, anchor="e",
+                     bg=CLR["bg"], fg=CLR["fg"]).pack(side="left")
+            widget_factory(r)
+            default = _net.DEFAULTS[key]
+            default_str = "(default)" if default in (False, "", "auto", True) \
+                else f"(default: {default})"
+            reset_btn = tk.Button(
+                r, text="↺", font=(UI_FONT, 9),
+                bg=CLR["panel"], fg=CLR["fg"],
+                relief="flat", cursor="hand2",
+                width=2, padx=2, pady=0,
+                command=lambda k=key: self._net_reset_field(k))
+            reset_btn.pack(side="left", padx=4)
+            self.add_tooltip(reset_btn, f"Reset to default {default_str}")
+            if hint:
+                tk.Label(r, text=hint, font=(UI_FONT, 8),
+                         bg=CLR["bg"], fg=CLR["fgdim"]).pack(
+                    side="left", padx=(6, 0))
+            return r
+
+        # ── Quick presets ──────────────────────────────────────────────
+        ps = _section(body, "Quick Presets")
+        ps_row = tk.Frame(ps, bg=CLR["bg"])
+        ps_row.pack(anchor="w")
+        tk.Label(ps_row, text="One-click setups:",
+                 font=(UI_FONT, 9),
+                 bg=CLR["bg"], fg=CLR["fgdim"]).pack(side="left", padx=(0, 8))
+
+        def _preset_btn(label, pid):
+            return tk.Button(
+                ps_row, text=label,
+                bg=CLR["panel"], fg=CLR["fg"],
+                font=(UI_FONT, 9),
+                activebackground=CLR["accent"], activeforeground="white",
+                relief="flat", cursor="hand2", padx=10, pady=3,
+                command=lambda p=pid: self._net_apply_preset(p))
+
+        _preset_btn("Direct (no proxy)", "direct").pack(side="left", padx=3)
+        _preset_btn("System defaults",   "system").pack(side="left", padx=3)
+        _preset_btn("Tor (127.0.0.1:9050)", "tor").pack(side="left", padx=3)
+        _preset_btn("Local HTTP (127.0.0.1:8080)", "local_http").pack(side="left", padx=3)
+
+        # ── Proxy ──────────────────────────────────────────────────────
+        px = _section(body, "Proxy")
+
+        en_row = tk.Frame(px, bg=CLR["bg"])
+        en_row.pack(fill="x", pady=2)
+        tk.Checkbutton(en_row, text="Route all traffic through a proxy",
+                       variable=self._net_vars["network.proxy_enabled"],
+                       bg=CLR["bg"], fg=CLR["fg"],
+                       activebackground=CLR["bg"]).pack(side="left")
+
+        def _scheme_widget(parent):
+            ttk.Combobox(parent,
+                         textvariable=self._net_vars["network.proxy_scheme"],
+                         values=["http", "https", "socks4", "socks5", "socks5h"],
+                         state="readonly", width=10,
+                         font=(UI_FONT, 9)).pack(side="left", padx=6)
+
+        _row(px, "Scheme:", "network.proxy_scheme", _scheme_widget,
+             hint="(SOCKS proxies are honoured by yt-dlp / ffmpeg; "
+                  "in-app urllib falls back to direct.)")
+
+        def _host_widget(parent):
+            tk.Entry(parent,
+                     textvariable=self._net_vars["network.proxy_host"],
+                     width=22, relief="flat",
+                     bg=CLR["input_bg"], fg=CLR["input_fg"]
+                     ).pack(side="left", padx=6)
+
+        _row(px, "Host:", "network.proxy_host", _host_widget)
+
+        def _port_widget(parent):
+            tk.Entry(parent,
+                     textvariable=self._net_vars["network.proxy_port"],
+                     width=8, relief="flat",
+                     bg=CLR["input_bg"], fg=CLR["input_fg"]
+                     ).pack(side="left", padx=6)
+
+        _row(px, "Port:", "network.proxy_port", _port_widget,
+             hint="(blank if no proxy)")
+
+        def _user_widget(parent):
+            tk.Entry(parent,
+                     textvariable=self._net_vars["network.proxy_user"],
+                     width=22, relief="flat",
+                     bg=CLR["input_bg"], fg=CLR["input_fg"]
+                     ).pack(side="left", padx=6)
+
+        _row(px, "Username:", "network.proxy_user", _user_widget,
+             hint="(optional)")
+
+        def _pass_widget(parent):
+            tk.Entry(parent,
+                     textvariable=self._net_vars["network.proxy_pass"],
+                     width=22, show="*", relief="flat",
+                     bg=CLR["input_bg"], fg=CLR["input_fg"]
+                     ).pack(side="left", padx=6)
+
+        _row(px, "Password:", "network.proxy_pass", _pass_widget,
+             hint="(optional)")
+
+        def _np_widget(parent):
+            tk.Entry(parent,
+                     textvariable=self._net_vars["network.no_proxy"],
+                     width=40, relief="flat",
+                     bg=CLR["input_bg"], fg=CLR["input_fg"]
+                     ).pack(side="left", padx=6)
+
+        _row(px, "Bypass list:", "network.no_proxy", _np_widget,
+             hint="(comma-separated hosts that skip the proxy)")
+
+        # ── Bandwidth & timeouts ────────────────────────────────────────
+        bw = _section(body, "Bandwidth and Timeouts")
+
+        def _rate_widget(parent):
+            tk.Entry(parent,
+                     textvariable=self._net_vars["network.bandwidth_limit"],
+                     width=10, relief="flat",
+                     bg=CLR["input_bg"], fg=CLR["input_fg"]
+                     ).pack(side="left", padx=6)
+
+        _row(bw, "Download rate cap:", "network.bandwidth_limit", _rate_widget,
+             hint="(e.g. 1M, 500K, 50K. Blank = unlimited)")
+
+        def _ct_widget(parent):
+            tk.Entry(parent,
+                     textvariable=self._net_vars["network.connect_timeout"],
+                     width=6, relief="flat",
+                     bg=CLR["input_bg"], fg=CLR["input_fg"]
+                     ).pack(side="left", padx=6)
+
+        _row(bw, "Connect timeout (s):", "network.connect_timeout", _ct_widget)
+
+        def _so_widget(parent):
+            tk.Entry(parent,
+                     textvariable=self._net_vars["network.socket_timeout"],
+                     width=6, relief="flat",
+                     bg=CLR["input_bg"], fg=CLR["input_fg"]
+                     ).pack(side="left", padx=6)
+
+        _row(bw, "Socket timeout (s):", "network.socket_timeout", _so_widget)
+
+        # ── Identity ────────────────────────────────────────────────────
+        idn = _section(body, "Identity")
+
+        def _ua_widget(parent):
+            tk.Entry(parent,
+                     textvariable=self._net_vars["network.user_agent"],
+                     width=44, relief="flat",
+                     bg=CLR["input_bg"], fg=CLR["input_fg"]
+                     ).pack(side="left", padx=6)
+
+        _row(idn, "User-Agent:", "network.user_agent", _ua_widget,
+             hint="(blank = library default)")
+
+        def _ipv_widget(parent):
+            ttk.Combobox(parent,
+                         textvariable=self._net_vars["network.ip_version"],
+                         values=["auto", "ipv4", "ipv6"],
+                         state="readonly", width=8,
+                         font=(UI_FONT, 9)).pack(side="left", padx=6)
+
+        _row(idn, "IP version:", "network.ip_version", _ipv_widget)
+
+        def _src_widget(parent):
+            tk.Entry(parent,
+                     textvariable=self._net_vars["network.source_address"],
+                     width=22, relief="flat",
+                     bg=CLR["input_bg"], fg=CLR["input_fg"]
+                     ).pack(side="left", padx=6)
+
+        _row(idn, "Source address:", "network.source_address", _src_widget,
+             hint="(bind to a specific local IP)")
+
+        # ── Security ────────────────────────────────────────────────────
+        sec = _section(body, "Security")
+        sec_row1 = tk.Frame(sec, bg=CLR["bg"])
+        sec_row1.pack(fill="x", pady=2)
+        tk.Checkbutton(sec_row1, text="Verify SSL certificates",
+                       variable=self._net_vars["network.verify_ssl"],
+                       bg=CLR["bg"], fg=CLR["fg"],
+                       activebackground=CLR["bg"]).pack(side="left")
+        ssl_reset = tk.Button(
+            sec_row1, text="↺", font=(UI_FONT, 9),
+            bg=CLR["panel"], fg=CLR["fg"],
+            relief="flat", cursor="hand2", width=2, padx=2,
+            command=lambda: self._net_reset_field("network.verify_ssl"))
+        ssl_reset.pack(side="left", padx=8)
+        self.add_tooltip(ssl_reset, "Reset to default (on)")
+
+        sec_row2 = tk.Frame(sec, bg=CLR["bg"])
+        sec_row2.pack(fill="x", pady=2)
+        tk.Checkbutton(sec_row2, text="Allow plain HTTP downloads",
+                       variable=self._net_vars["network.allow_http"],
+                       bg=CLR["bg"], fg=CLR["fg"],
+                       activebackground=CLR["bg"]).pack(side="left")
+        http_reset = tk.Button(
+            sec_row2, text="↺", font=(UI_FONT, 9),
+            bg=CLR["panel"], fg=CLR["fg"],
+            relief="flat", cursor="hand2", width=2, padx=2,
+            command=lambda: self._net_reset_field("network.allow_http"))
+        http_reset.pack(side="left", padx=8)
+        self.add_tooltip(http_reset, "Reset to default (on)")
+
+        # ── Action row ─────────────────────────────────────────────────
+        actions = tk.Frame(body, bg=CLR["bg"])
+        actions.pack(fill="x", padx=20, pady=(14, 12))
+
+        tk.Button(actions, text="Save",
+                  bg=CLR["green"], fg="white",
+                  font=(UI_FONT, 11, "bold"),
+                  activebackground=CLR["accent"], activeforeground="white",
+                  relief="flat", cursor="hand2", padx=18, pady=6,
+                  command=self._net_save).pack(side="left", padx=4)
+
+        tk.Button(actions, text="Test Connection",
+                  bg=CLR["panel"], fg=CLR["fg"],
+                  font=(UI_FONT, 10),
+                  activebackground=CLR["accent"], activeforeground="white",
+                  relief="flat", cursor="hand2", padx=14, pady=6,
+                  command=self._net_test).pack(side="left", padx=4)
+
+        tk.Button(actions, text="Reset all networking settings",
+                  bg=CLR["panel"], fg=CLR["red"],
+                  font=(UI_FONT, 10),
+                  activebackground=CLR["red"], activeforeground="white",
+                  relief="flat", cursor="hand2", padx=14, pady=6,
+                  command=self._net_reset_all).pack(side="right", padx=4)
+
+        self._net_status_lbl = tk.Label(
+            body, text="", font=(UI_FONT, 9),
+            bg=CLR["bg"], fg=CLR["fgdim"], anchor="w", justify="left",
+            wraplength=820)
+        self._net_status_lbl.pack(fill="x", padx=20, pady=(0, 14))
+
+    def _net_collect(self):
+        """Read every form variable into a settings-ready dict."""
+        from core import network as _net
+        out = {}
+        for key, var in self._net_vars.items():
+            default = _net.DEFAULTS[key]
+            v = var.get()
+            if isinstance(default, bool):
+                out[key] = bool(v)
+            else:
+                out[key] = v
+        return out
+
+    def _net_save(self):
+        from core.settings import load_settings, save_settings
+        s = load_settings()
+        s.update(self._net_collect())
+        ok = save_settings(s)
+        self._net_status_lbl.config(
+            text=("Saved." if ok else "Save failed."),
+            fg=(CLR["green"] if ok else CLR["red"]))
+
+    def _net_test(self):
+        from core import network as _net
+        # Test against the *form* values, not the saved ones, so the user
+        # can validate before clicking Save.
+        cfg = dict(_net.DEFAULTS)
+        cfg.update(self._net_collect())
+        self._net_status_lbl.config(text="Testing…", fg=CLR["fgdim"])
+        self.update_idletasks()
+
+        def _work():
+            ok, msg = _net.test(cfg=cfg)
+            colour = CLR["green"] if ok else CLR["red"]
+            self.after(0, lambda: self._net_status_lbl.config(
+                text=("Connection OK: " + msg) if ok
+                else ("Connection failed: " + msg),
+                fg=colour))
+
+        threading.Thread(target=_work, daemon=True).start()
+
+    def _net_reset_field(self, key):
+        from core import network as _net
+        if key not in _net.DEFAULTS:
+            return
+        default = _net.DEFAULTS[key]
+        var = self._net_vars.get(key)
+        if var is None:
+            return
+        if isinstance(default, bool):
+            var.set(bool(default))
+        else:
+            var.set(str(default))
+        self._net_status_lbl.config(
+            text=f"{key} reset (not saved yet).", fg=CLR["fgdim"])
+
+    def _net_reset_all(self):
+        from core import network as _net
+        if not messagebox.askyesno(
+                "Reset networking",
+                "Reset every networking setting to its default?\n\n"
+                "This clears any proxy, bandwidth cap, custom User-Agent, "
+                "and other overrides you have made."):
+            return
+        _net.reset_all()
+        # Refresh form variables from defaults.
+        for key, default in _net.DEFAULTS.items():
+            var = self._net_vars.get(key)
+            if var is None:
+                continue
+            if isinstance(default, bool):
+                var.set(bool(default))
+            else:
+                var.set(str(default))
+        self._net_status_lbl.config(
+            text="All networking settings reset to defaults and saved.",
+            fg=CLR["green"])
+
+    def _net_apply_preset(self, preset_id):
+        from core import network as _net
+        preset = _net.PRESETS.get(preset_id, {})
+        if not preset:
+            return
+        # Apply preset values to the form variables (don't save until the
+        # user clicks Save, so they can review and tweak first).
+        for key, value in preset.items():
+            var = self._net_vars.get(key)
+            if var is None:
+                continue
+            if isinstance(_net.DEFAULTS.get(key), bool):
+                var.set(bool(value))
+            else:
+                var.set(str(value))
+        self._net_status_lbl.config(
+            text=f"Preset '{preset_id}' applied to form. Click Save to persist.",
+            fg=CLR["fgdim"])
 
     # ─── Skins ────────────────────────────────────────────────────────────────
     def _build_skins_tab(self, nb):

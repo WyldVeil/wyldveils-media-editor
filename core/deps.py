@@ -56,6 +56,12 @@ def _pip_install(pip_name):
 
     import platform
     creationflags = 0x08000000 if platform.system() == "Windows" else 0
+    # Pass user network settings (proxy, etc.) through to pip via env vars.
+    try:
+        from core import network as _net
+        env = _net.subprocess_env()
+    except Exception:
+        env = None
     try:
         result = subprocess.run(
             [
@@ -69,6 +75,7 @@ def _pip_install(pip_name):
             capture_output=True,
             creationflags=creationflags,
             timeout=120,
+            env=env,
         )
         return result.returncode == 0
     except Exception:

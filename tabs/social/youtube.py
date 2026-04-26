@@ -1298,12 +1298,19 @@ class YouTubeDownloaderTab(BaseTab):
 
     def _fetch_worker(self, url: str, ytdlp: str):
         try:
+            from core import network as _net
             # Check playlist flag dynamically
             playlist_flag = "--yes-playlist" if self._playlist_var.get() else "--no-playlist"
+            cmd = [ytdlp, playlist_flag, "-J", url]
+            # Apply user network settings to the info-fetch call too.
+            net_args = _net.build_yt_dlp_args()
+            if net_args:
+                cmd = [ytdlp] + net_args + cmd[1:]
             r = subprocess.run(
-                [ytdlp, playlist_flag, "-J", url],
+                cmd,
                 capture_output=True, text=True, timeout=45,
-                creationflags=CREATE_NO_WINDOW)
+                creationflags=CREATE_NO_WINDOW,
+                env=_net.subprocess_env())
             if r.returncode != 0:
                 snippet = (r.stderr or r.stdout or "")[:600]
                 self.after(0, lambda s=snippet: self.log_tagged(
@@ -1471,9 +1478,9 @@ class YouTubeDownloaderTab(BaseTab):
                     "warn"))
                 return
         try:
-            req = urllib.request.Request(
-                thumb_url, headers={"User-Agent": "Mozilla/5.0"})
-            with urllib.request.urlopen(req, timeout=12) as resp:
+            from core import network as _net
+            with _net.urlopen(thumb_url, timeout=12,
+                              headers={"User-Agent": "Mozilla/5.0"}) as resp:
                 data = resp.read()
             img = Image.open(io.BytesIO(data)).convert("RGB")
             self._thumb_pil_image = img.copy()
@@ -1520,13 +1527,15 @@ class YouTubeDownloaderTab(BaseTab):
 
         def _worker():
             try:
+                from core import network as _net
                 playlist_flag = "--yes-playlist" if self._playlist_var.get() else "--no-playlist"
                 r = subprocess.run(
-                    [ytdlp, playlist_flag, "-g",
+                    [ytdlp] + _net.build_yt_dlp_args() + [playlist_flag, "-g",
                      "-f", "best[height<=720][ext=mp4]/best[height<=720]/best",
                      url],
                     capture_output=True, text=True, timeout=25,
-                    creationflags=CREATE_NO_WINDOW)
+                    creationflags=CREATE_NO_WINDOW,
+                    env=_net.subprocess_env())
                 lines = [l.strip() for l in r.stdout.splitlines() if l.strip()]
                 if not lines:
                     self.after(0, lambda: self.log_tagged(
@@ -1542,7 +1551,8 @@ class YouTubeDownloaderTab(BaseTab):
                     [ffplay, "-autoexit",
                      "-window_title", "Video Preview - Quintessential Video Editor",
                      stream_url],
-                    creationflags=CREATE_NO_WINDOW)
+                    creationflags=CREATE_NO_WINDOW,
+                    env=_net.subprocess_env())
                 self.after(0, lambda: self.log_tagged(
                     self.console, "▶ Playing in ffplay.", "info"))
             except Exception as exc:
@@ -1571,7 +1581,9 @@ class YouTubeDownloaderTab(BaseTab):
         out_dir = os.path.join(os.path.expanduser("~"), "Downloads")
         out_template = os.path.join(out_dir, f"recording_{ts}.%(ext)s")
 
-        cmd = [ytdlp, "-f", "best", "--live-from-start",
+        from core import network as _net
+        cmd = [ytdlp] + _net.build_yt_dlp_args() + [
+               "-f", "best", "--live-from-start",
                "-o", out_template, url]
 
         ff_dir = _ffmpeg_dir()
@@ -1586,7 +1598,8 @@ class YouTubeDownloaderTab(BaseTab):
             try:
                 self._record_proc = subprocess.Popen(
                     cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                    text=True, bufsize=1, creationflags=CREATE_NO_WINDOW)
+                    text=True, bufsize=1, creationflags=CREATE_NO_WINDOW,
+                    env=_net.subprocess_env())
                 for line in iter(self._record_proc.stdout.readline, ""):
                     stripped = line.rstrip()
                     if stripped:
@@ -1615,11 +1628,13 @@ class YouTubeDownloaderTab(BaseTab):
     def _stream_ytdlp(self, cmd: list,
                       on_line=None, on_progress=None, on_done=None):
         """Run yt-dlp; parse progress lines; call callbacks. Blocks until done."""
+        from core import network as _net
         self.after(0, lambda: self.log(self.console, "CMD: " + " ".join(str(c) for c in cmd)))
         try:
             self._active_proc = subprocess.Popen(
                 cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                text=True, bufsize=1, creationflags=CREATE_NO_WINDOW)
+                text=True, bufsize=1, creationflags=CREATE_NO_WINDOW,
+                env=_net.subprocess_env())
             for line in iter(self._active_proc.stdout.readline, ""):
                 stripped = line.rstrip()
                 if not stripped:
@@ -1714,7 +1729,12 @@ class YouTubeDownloaderTab(BaseTab):
     # ─────────────────────────────────────────────────────────────────────────
 
     def _build_common_ytdlp_args(self) -> list:
-        args = []
+        # Start with the app-wide network settings (proxy, rate limit,
+        # timeout, IP version, source address, user agent, SSL verify).
+        # Any per-tab overrides below come later in the argv so yt-dlp
+        # picks them up as the winning value.
+        from core import network as _net
+        args = list(_net.build_yt_dlp_args())
         # Auth / Network
         cookies = self._cookies_var.get().strip()
         if cookies and os.path.isfile(cookies):
@@ -2029,8 +2049,9 @@ class YouTubeDownloaderTab(BaseTab):
         tmp_dir = tempfile.mkdtemp(prefix="cf_subs_")
         tmp_base = os.path.join(tmp_dir, "sub")
         
+        from core import network as _net
         playlist_flag = "--yes-playlist" if self._playlist_var.get() else "--no-playlist"
-        cmd = [ytdlp, playlist_flag, "--write-sub",
+        cmd = [ytdlp] + _net.build_yt_dlp_args() + [playlist_flag, "--write-sub",
                "--skip-download",
                "--sub-lang", lang,
                "--sub-format", sub_fmt,
@@ -2039,7 +2060,8 @@ class YouTubeDownloaderTab(BaseTab):
             cmd.insert(-3, "--write-auto-sub")
         try:
             subprocess.run(cmd, capture_output=True, timeout=30,
-                           creationflags=CREATE_NO_WINDOW)
+                           creationflags=CREATE_NO_WINDOW,
+                           env=_net.subprocess_env())
         except Exception:
             pass
         # Find the downloaded sub file
@@ -2216,11 +2238,13 @@ class YouTubeDownloaderTab(BaseTab):
         self.after(0, self._batch_finished)
 
     def _run_ytdlp_sync_batch(self, cmd: list) -> int:
+        from core import network as _net
         self.after(0, lambda: self.log(self.console, "BATCH CMD: " + " ".join(cmd)))
         try:
             proc = subprocess.Popen(
                 cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                text=True, bufsize=1, creationflags=CREATE_NO_WINDOW)
+                text=True, bufsize=1, creationflags=CREATE_NO_WINDOW,
+                env=_net.subprocess_env())
             self._active_proc = proc
             for line in iter(proc.stdout.readline, ""):
                 stripped = line.rstrip()
