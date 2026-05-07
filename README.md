@@ -2,10 +2,6 @@
 
 A completely free, open-source video and audio processing suite with 70+ tools, 28 languages, and a skinnable UI.
 
-[![Buy me a cup of coffee](https://img.shields.io/badge/Buy_me_a_cup_of_coffee-FF5E5B?style=for-the-badge&logo=ko-fi&logoColor=white)](https://ko-fi.com/WyldVeil)
-
-Play a free MMO I have been working on for some time (Very much a work in progress) at: [WyldVeil](https://wyldveil.com)
-
 ![screenshot](screenshots/screenshot.png)
 
 ## Install
