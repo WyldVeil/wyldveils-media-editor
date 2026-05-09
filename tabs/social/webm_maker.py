@@ -106,7 +106,19 @@ class WebMTab(BaseTab):
         size_lf = tk.LabelFrame(left, text=f"  {t('webm_maker.target_size_section')}  ", padx=14, pady=10)
         size_lf.pack(fill="x", pady=(0, 6))
 
-        size_row = tk.Frame(size_lf); size_row.pack(fill="x")
+        # Toggle: enable size limit (defaults ON — preserves existing behavior)
+        self.size_limit_enabled_var = tk.BooleanVar(value=True)
+        tk.Checkbutton(size_lf,
+                       text=t("webm_maker.enable_size_limit_checkbox"),
+                       variable=self.size_limit_enabled_var,
+                       command=self._on_size_limit_toggle
+                       ).pack(anchor="w", pady=(0, 6))
+
+        # Container holding the size controls (shown only when toggle is ON)
+        self.size_controls = tk.Frame(size_lf)
+        self.size_controls.pack(fill="x")
+
+        size_row = tk.Frame(self.size_controls); size_row.pack(fill="x")
         self.size_limit_var = tk.StringVar(value="8")
         size_entry = tk.Entry(size_row, textvariable=self.size_limit_var,
                               width=7, font=(UI_FONT, 14, "bold"), justify="center")
@@ -114,17 +126,34 @@ class WebMTab(BaseTab):
         tk.Label(size_row, text="MB", font=(UI_FONT, 13)).pack(side="left", padx=4)
 
         # Quick-pick buttons
-        quick = tk.Frame(size_lf); quick.pack(anchor="w", pady=(6, 0))
+        quick = tk.Frame(self.size_controls); quick.pack(anchor="w", pady=(6, 0))
         for mb in [4, 8, 10, 25, 50, 100, 200]:
             tk.Button(quick, text=f"{mb} MB", width=6, bg="#333", fg=CLR["fg"],
                       font=(UI_FONT, 8),
                       command=lambda v=mb: self.size_limit_var.set(str(v))
                       ).pack(side="left", padx=2)
 
-        self.budget_lbl = tk.Label(size_lf, text="", fg=CLR["fgdim"], font=(UI_FONT, 9))
+        self.budget_lbl = tk.Label(self.size_controls, text="", fg=CLR["fgdim"], font=(UI_FONT, 9))
         self.budget_lbl.pack(anchor="w", pady=(4, 0))
         # Update budget estimate whenever size or duration changes
         self.size_limit_var.trace_add("write", lambda *_: self._update_budget_label())
+
+        # CRF override (visible only when size-limit toggle is OFF) ─────────
+        # Seeded by the chosen quality preset's crf_hint, but user can override.
+        self.crf_controls = tk.Frame(size_lf)   # NOT packed yet — _on_size_limit_toggle handles visibility
+        tk.Label(self.crf_controls, text=t("webm_maker.crf_section"),
+                 font=(UI_FONT, 10, "bold")).pack(anchor="w")
+        crf_row = tk.Frame(self.crf_controls); crf_row.pack(fill="x", pady=(4, 0))
+        self.crf_var = tk.IntVar(value=31)   # preset will reseed in _on_quality_change
+        tk.Scale(crf_row, variable=self.crf_var,
+                 from_=0, to=63, resolution=1,
+                 orient="horizontal", length=240,
+                 command=lambda *_: self._update_budget_label()
+                 ).pack(side="left", padx=6)
+        tk.Entry(crf_row, textvariable=self.crf_var, width=4,
+                 justify="center").pack(side="left")
+        tk.Label(self.crf_controls, text=t("webm_maker.crf_hint"),
+                 fg=CLR["fgdim"], font=(UI_FONT, 8)).pack(anchor="w", pady=(2, 0))
 
         # ── Quality preset ────────────────────────────────────────────────
         qual_lf = tk.LabelFrame(left, text=f"  {t('webm_maker.speed_section')}  ",
@@ -135,6 +164,7 @@ class WebMTab(BaseTab):
         qual_cb = ttk.Combobox(qual_lf, textvariable=self.quality_var,
                                values=QUALITY_LABELS, state="readonly", width=44)
         qual_cb.pack(anchor="w")
+        qual_cb.bind("<<ComboboxSelected>>", lambda *_: self._on_quality_change())
         tk.Label(qual_lf,
                  text=t("webm_maker.lower_quality_faster_encode_higher_quality_very"),
                  fg=CLR["fgdim"], font=(UI_FONT, 8)).pack(anchor="w", pady=(4, 0))
@@ -484,6 +514,27 @@ class WebMTab(BaseTab):
         self.audio_br_cb.config(state="readonly" if has_audio else "disabled")
         self._update_budget_label()
 
+    def _on_size_limit_toggle(self):
+        """Show size controls OR CRF controls — never both."""
+        if self.size_limit_enabled_var.get():
+            self.crf_controls.pack_forget()
+            self.size_controls.pack(fill="x")
+        else:
+            self.size_controls.pack_forget()
+            # Seed CRF from current preset before revealing
+            self._seed_crf_from_preset()
+            self.crf_controls.pack(fill="x")
+        self._update_budget_label()
+
+    def _on_quality_change(self):
+        """When user changes quality preset, reseed CRF if it's user-visible."""
+        if not self.size_limit_enabled_var.get():
+            self._seed_crf_from_preset()
+
+    def _seed_crf_from_preset(self):
+        preset = next(p for p in QUALITY_PRESETS if p[0] == self.quality_var.get())
+        self.crf_var.set(preset[4])   # crf_hint
+
     # ═════════════════════════════════════════════════════════════════════════
     #  Browse output
     # ═════════════════════════════════════════════════════════════════════════
@@ -552,6 +603,7 @@ class WebMTab(BaseTab):
         ffmpeg = get_binary_path("ffmpeg.exe")
         codec  = self.codec_var.get()       # "VP9" or "VP8"
         two_pass = self.twopass_var.get()
+        size_limited = self.size_limit_enabled_var.get()
 
         # ── Quality preset ─────────────────────────────────────────────
         quality_label = self.quality_var.get()
@@ -570,7 +622,7 @@ class WebMTab(BaseTab):
         else:
             effective_dur = max(1.0, duration)
 
-        # ── Bitrate calculation ─────────────────────────────────────────
+        # ── Audio bitrate (used for budget math + encoder args) ─────────
         audio_codec_key = self.audio_codec_var.get()
         audio_lib       = AUDIO_OPTIONS.get(audio_codec_key)
         audio_kbps = 0
@@ -580,19 +632,34 @@ class WebMTab(BaseTab):
             except Exception:
                 audio_kbps = 128
 
-        total_bits  = size_mb * 1024 * 1024 * 8
-        audio_bits  = audio_kbps * 1000 * effective_dur
-        video_bits  = max(10_000, total_bits - audio_bits)
-        video_kbps  = int(video_bits / effective_dur / 1000)
-        # min/max guard
-        video_kbps  = max(50, min(video_kbps, 100_000))
-        video_br    = f"{video_kbps}k"
+        # ── Bitrate calculation (size-limited mode only) ───────────────
+        if size_limited:
+            # 96% undershoot margin handles Opus VBR variance without
+            # underbudgeting too aggressively. libvpx-vp9 two-pass ABR is
+            # accurate within ±2% on its own, so we don't need maxrate/bufsize.
+            SAFETY = 0.96
+            total_bits = size_mb * 1024 * 1024 * 8 * SAFETY
+            audio_bits = audio_kbps * 1000 * effective_dur
+            video_bits = max(10_000, total_bits - audio_bits)
+            video_kbps = int(video_bits / effective_dur / 1000)
+            video_kbps = max(50, min(video_kbps, 100_000))
+            video_br   = f"{video_kbps}k"
+        else:
+            video_kbps = 0
+            video_br   = "0"   # libvpx CQ mode requires -b:v 0
+
+        # ── Effective CRF (used in CQ mode only) ───────────────────────
+        crf_value = self.crf_var.get() if not size_limited else crf_hint
 
         self._log(f"━━━ WebM Maker ━━━")
         self._log(f"Codec:          {codec}")
-        self._log(f"Target size:    {size_mb} MB")
+        self._log(f"Mode:           {'Size-limited ABR' if size_limited else 'Constant Quality (CRF)'}")
+        if size_limited:
+            self._log(f"Target size:    {size_mb} MB  (encoder targets {size_mb*0.96:.2f} MB for safety)")
+            self._log(f"Video bitrate:  {video_kbps} kbps")
+        else:
+            self._log(f"CRF:            {crf_value}")
         self._log(f"Duration:       {effective_dur:.2f}s")
-        self._log(f"Video bitrate:  {video_kbps} kbps")
         self._log(f"Audio:          {audio_codec_key}  {audio_kbps if audio_lib else 0} kbps")
         self._log(f"Quality preset: {quality_label.strip()}")
         self._log("")
@@ -623,13 +690,19 @@ class WebMTab(BaseTab):
             input_args += ["-t", str(effective_dur)]
 
         # ── Codec-specific args ─────────────────────────────────────────
+        # Two correct rate-control modes for libvpx — never mix them:
+        #   ABR (size-limited): -b:v X      (no -crf, no maxrate, no bufsize —
+        #                                   libvpx-vp9 two-pass ABR is accurate
+        #                                   within ±2% on its own.)
+        #   CQ  (quality-only): -b:v 0 -crf X   (bitrate disabled, quality target)
         if codec == "VP9":
-            vcodec_args = [
-                t("dynamics.c_v"), "libvpx-vp9",
-                t("webm_maker.b_v"), video_br,
-                "-minrate", f"{int(video_kbps*0.5)}k",
-                "-maxrate", f"{int(video_kbps*1.45)}k",
-                "-crf", str(crf_hint),
+            vcodec_args = [t("dynamics.c_v"), "libvpx-vp9"]
+            if size_limited:
+                vcodec_args += [t("webm_maker.b_v"), video_br]
+            else:
+                vcodec_args += [t("webm_maker.b_v"), "0",
+                                "-crf", str(crf_value)]
+            vcodec_args += [
                 "-cpu-used", str(vp9_cpu),
                 "-deadline", vp9_deadline,
                 "-tile-columns", self.tile_col_var.get(),
@@ -637,11 +710,13 @@ class WebMTab(BaseTab):
                 "-pix_fmt", pixfmt,
             ]
         else:  # VP8
-            vcodec_args = [
-                t("dynamics.c_v"), "libvpx",
-                t("webm_maker.b_v"), video_br,
-                "-minrate", f"{int(video_kbps*0.5)}k",
-                "-maxrate", f"{int(video_kbps*1.45)}k",
+            vcodec_args = [t("dynamics.c_v"), "libvpx"]
+            if size_limited:
+                vcodec_args += [t("webm_maker.b_v"), video_br]
+            else:
+                vcodec_args += [t("webm_maker.b_v"), "0",
+                                "-crf", str(crf_value)]
+            vcodec_args += [
                 "-cpu-used", str(vp8_cpu),
                 "-pix_fmt", pixfmt,
             ]
