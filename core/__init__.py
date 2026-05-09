@@ -10,4 +10,4 @@ Submodules
 """
 
 # ── Single-source application version ────────────────────────────────────────
-APP_VERSION = "1.14.0"
+APP_VERSION = "1.15.0"
