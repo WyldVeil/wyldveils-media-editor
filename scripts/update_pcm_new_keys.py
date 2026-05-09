@@ -6,7 +6,7 @@ Run this AFTER translate_missing.py finishes.
 import json
 from pathlib import Path
 
-LOCALE_DIR = Path(__file__).parent / "locale"
+LOCALE_DIR = Path(__file__).parent.parent / "locale"
 
 with open(LOCALE_DIR / "en_US.json", encoding="utf-8") as f:
     en = json.load(f)

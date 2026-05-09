@@ -23,7 +23,7 @@ except ImportError:
     sys.exit(1)
 
 # ---------------------------------------------------------------------------
-LOCALE_DIR = Path(__file__).parent / "locale"
+LOCALE_DIR = Path(__file__).parent.parent / "locale"
 
 # Maps our locale codes → Google Translate target language codes
 GOOGLE_LANG = {

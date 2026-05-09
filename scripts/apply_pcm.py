@@ -5,7 +5,7 @@ Run:  python apply_pcm.py
 import json
 from pathlib import Path
 
-LOCALE_DIR = Path(__file__).parent / "locale"
+LOCALE_DIR = Path(__file__).parent.parent / "locale"
 
 PCM = {
   "app.subtitle": "Video Editor",

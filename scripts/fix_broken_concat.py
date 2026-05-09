@@ -7,7 +7,7 @@ import re
 import json
 from pathlib import Path
 
-ROOT       = Path(__file__).parent
+ROOT       = Path(__file__).parent.parent
 TABS_DIR   = ROOT / "tabs"
 LOCALE_DIR = ROOT / "locale"
 

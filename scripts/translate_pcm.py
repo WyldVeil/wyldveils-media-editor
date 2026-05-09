@@ -27,7 +27,7 @@ except ImportError:
     print("ERROR: requests not installed. Run: pip install requests")
     sys.exit(1)
 
-LOCALE_DIR = Path(__file__).parent / "locale"
+LOCALE_DIR = Path(__file__).parent.parent / "locale"
 API_URL = "https://api-inference.huggingface.co/models/facebook/nllb-200-distilled-600M"
 
 
