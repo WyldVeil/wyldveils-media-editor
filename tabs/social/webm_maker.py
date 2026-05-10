@@ -44,6 +44,58 @@ AUDIO_OPTIONS = {
 AUDIO_BITRATES = ["48k", "64k", "96k", "128k", "160k", "192k", "256k", "320k"]
 
 
+# ─── Pure helpers (no Tkinter dependency — testable) ────────────────────────
+def _snap_even(n: int) -> int:
+    """Round an integer up to the next even number if it's odd.
+
+    Used for width/height because video codecs reject odd dimensions.
+    """
+    return n if n % 2 == 0 else n + 1
+
+
+# Pixel formats supported by libvpx-vp9 / libvpx (VP8). Source pix_fmts
+# outside these sets fall back to yuv420p with a console warning.
+VP9_PIXFMTS = frozenset({
+    "yuv420p", "yuv420p10le",
+    "yuv422p", "yuv422p10le",
+    "yuv440p", "yuv440p10le",
+    "yuv444p", "yuv444p10le",
+    "yuva420p",
+    "gbrp",   "gbrp10le",
+})
+
+VP8_PIXFMTS = frozenset({"yuv420p", "yuva420p"})
+
+
+def _resolve_pixfmt(user_choice: str, source_pixfmt: str, codec: str):
+    """Resolve the effective FFmpeg `-pix_fmt` value.
+
+    Args:
+        user_choice: dropdown value. Either "source" (case-insensitive) for
+            auto-detect, or an explicit pix_fmt name like "yuv420p".
+        source_pixfmt: pix_fmt detected from ffprobe ("" if unknown).
+        codec: "VP9" or "VP8".
+
+    Returns:
+        (effective_pixfmt, warning_msg_or_None). Warning is non-None only
+        when the user requested "source" but the detected pix_fmt is
+        unsupported by the chosen codec — never when source is unknown.
+    """
+    if user_choice.strip().lower() != "source":
+        return user_choice, None
+
+    if not source_pixfmt:
+        return "yuv420p", None
+
+    supported = VP9_PIXFMTS if codec == "VP9" else VP8_PIXFMTS
+    if source_pixfmt in supported:
+        return source_pixfmt, None
+
+    return ("yuv420p",
+            f"⚠ Source pix_fmt '{source_pixfmt}' not supported by {codec}; "
+            f"falling back to yuv420p.")
+
+
 class WebMTab(BaseTab):
     def __init__(self, parent):
         super().__init__(parent)
@@ -53,6 +105,7 @@ class WebMTab(BaseTab):
         self._src_h      = 0
         self._src_dur    = 0.0
         self._src_fps    = 0.0
+        self._src_pixfmt = ""        # set by _load_metadata
         self._aspect     = 1.0       # w/h ratio
         self._lock_updating = False  # prevents slider feedback loops
 
@@ -207,53 +260,79 @@ class WebMTab(BaseTab):
         res_lf = tk.LabelFrame(right, text=f"  {t('webm_maker.output_resolution_section')}  ", padx=14, pady=10)
         res_lf.pack(fill="x", pady=(0, 6))
 
+        # "Use source resolution" lock — when checked, all child controls
+        # below are disabled and the encoder skips the scale= filter.
+        self.use_source_res_var = tk.BooleanVar(value=True)
+        tk.Checkbutton(res_lf,
+                       text=t("webm_maker.use_source_resolution_checkbox"),
+                       variable=self.use_source_res_var,
+                       command=self._on_use_source_res_toggle
+                       ).pack(anchor="w", pady=(0, 4))
+
         # Lock aspect ratio
         self.lock_ar_var = tk.BooleanVar(value=True)
-        tk.Checkbutton(res_lf, text=t("webm_maker.lock_aspect_ratio"),
-                       variable=self.lock_ar_var).pack(anchor="w")
+        self.lock_ar_cb = tk.Checkbutton(res_lf, text=t("webm_maker.lock_aspect_ratio"),
+                                          variable=self.lock_ar_var)
+        self.lock_ar_cb.pack(anchor="w")
 
         # Width slider + entry
+        # The slider's IntVar drives the encoder. The entry has its own
+        # StringVar so typing doesn't ping-pong against the slider on every
+        # keystroke. They sync only at commit time (Return / FocusOut).
         w_row = tk.Frame(res_lf); w_row.pack(fill="x", pady=(8, 2))
         tk.Label(w_row, text=t("crop.width_label"), width=7, anchor="e").pack(side="left")
         self.res_w_var = tk.IntVar(value=1920)
+        self.res_w_entry_var = tk.StringVar(value="1920")
         self.w_slider = tk.Scale(w_row, variable=self.res_w_var,
                                   from_=128, to=7680, resolution=2,
                                   orient="horizontal", length=200,
-                                  command=self._on_w_changed)
+                                  command=self._on_w_slider)
         self.w_slider.pack(side="left", padx=6)
-        self.w_entry = tk.Entry(w_row, textvariable=self.res_w_var, width=6,
-                                 justify="center")
+        vcmd_w = (self.register(self._validate_int_or_empty), "%P")
+        self.w_entry = tk.Entry(w_row, textvariable=self.res_w_entry_var, width=6,
+                                 justify="center",
+                                 validate="key", validatecommand=vcmd_w)
         self.w_entry.pack(side="left")
-        self.w_entry.bind("<Return>",   lambda e: self._on_w_changed(self.res_w_var.get()))
-        self.w_entry.bind("<FocusOut>", lambda e: self._on_w_changed(self.res_w_var.get()))
+        self.w_entry.bind("<Return>",   lambda e: self._commit_w_from_entry())
+        self.w_entry.bind("<FocusOut>", lambda e: self._commit_w_from_entry())
+        # Mirror slider movements into the entry, but only when the entry
+        # doesn't currently have focus (avoid stomping on in-progress typing).
+        self.res_w_var.trace_add("write", self._mirror_w_to_entry)
 
-        # Height slider + entry
+        # Height slider + entry — symmetric to width
         h_row = tk.Frame(res_lf); h_row.pack(fill="x", pady=(2, 4))
         tk.Label(h_row, text=t("crop.height_label"), width=7, anchor="e").pack(side="left")
         self.res_h_var = tk.IntVar(value=1080)
+        self.res_h_entry_var = tk.StringVar(value="1080")
         self.h_slider = tk.Scale(h_row, variable=self.res_h_var,
                                   from_=128, to=4320, resolution=2,
                                   orient="horizontal", length=200,
-                                  command=self._on_h_changed)
+                                  command=self._on_h_slider)
         self.h_slider.pack(side="left", padx=6)
-        self.h_entry = tk.Entry(h_row, textvariable=self.res_h_var, width=6,
-                                 justify="center")
+        vcmd_h = (self.register(self._validate_int_or_empty), "%P")
+        self.h_entry = tk.Entry(h_row, textvariable=self.res_h_entry_var, width=6,
+                                 justify="center",
+                                 validate="key", validatecommand=vcmd_h)
         self.h_entry.pack(side="left")
-        self.h_entry.bind("<Return>",   lambda e: self._on_h_changed(self.res_h_var.get()))
-        self.h_entry.bind("<FocusOut>", lambda e: self._on_h_changed(self.res_h_var.get()))
+        self.h_entry.bind("<Return>",   lambda e: self._commit_h_from_entry())
+        self.h_entry.bind("<FocusOut>", lambda e: self._commit_h_from_entry())
+        self.res_h_var.trace_add("write", self._mirror_h_to_entry)
 
         # Resolution presets
         preset_row = tk.Frame(res_lf); preset_row.pack(anchor="w", pady=(4, 0))
-        tk.Label(preset_row, text=t("scene_detect.presets_label"), fg=CLR["fgdim"],
-                 font=(UI_FONT, 8)).pack(side="left", padx=(0, 4))
+        self._res_preset_label = tk.Label(preset_row, text=t("scene_detect.presets_label"),
+                                           fg=CLR["fgdim"], font=(UI_FONT, 8))
+        self._res_preset_label.pack(side="left", padx=(0, 4))
+        self._res_preset_btns = []
         for label, w, h in [("8K", 7680, 4320), ("4K", 3840, 2160),
                               ("1440p", 2560, 1440), ("1080p", 1920, 1080),
                               ("720p", 1280, 720), ("480p", 854, 480),
-                              ("360p", 640, 360), ("Original", 0, 0)]:
-            tk.Button(preset_row, text=label, width=5, bg="#333", fg=CLR["fg"],
-                      font=(UI_FONT, 7),
-                      command=lambda ww=w, hh=h: self._apply_res_preset(ww, hh)
-                      ).pack(side="left", padx=1)
+                              ("360p", 640, 360)]:
+            btn = tk.Button(preset_row, text=label, width=5, bg="#333", fg=CLR["fg"],
+                            font=(UI_FONT, 7),
+                            command=lambda ww=w, hh=h: self._apply_res_preset(ww, hh))
+            btn.pack(side="left", padx=1)
+            self._res_preset_btns.append(btn)
 
         # ── Trim ──────────────────────────────────────────────────────────
         trim_lf = tk.LabelFrame(right, text=f"  {t('webm_maker.trim_section')}  ", padx=14, pady=8)
@@ -280,11 +359,15 @@ class WebMTab(BaseTab):
                      width=6, state="normal").pack(side="left", padx=4)
 
         tk.Label(ex1, text=t("webm_maker.pixel_format")).pack(side="left", padx=(12, 0))
-        self.pixfmt_var = tk.StringVar(value="yuv420p")
-        ttk.Combobox(ex1, textvariable=self.pixfmt_var,
-                     values=["yuv420p", "yuva420p (transparency)",
-                              "yuv444p", "gbrp"],
-                     state="readonly", width=22).pack(side="left", padx=4)
+        # Default value used until ffprobe relabels it after a file loads.
+        self.pixfmt_var = tk.StringVar(value="Source (auto-detect)")
+        self.pixfmt_cb  = ttk.Combobox(
+            ex1, textvariable=self.pixfmt_var,
+            values=["Source (auto-detect)",
+                    "yuv420p", "yuva420p (transparency)",
+                    "yuv444p", "gbrp"],
+            state="readonly", width=22)
+        self.pixfmt_cb.pack(side="left", padx=4)
 
         # Row 2
         ex2 = tk.Frame(extra_lf); ex2.pack(fill="x", pady=2)
@@ -297,15 +380,24 @@ class WebMTab(BaseTab):
 
         # Row 3 - VP9-specific
         ex3 = tk.Frame(extra_lf); ex3.pack(fill="x", pady=2)
-        tk.Label(ex3, text=t("webm_maker.tile_columns_vp9")).pack(side="left")
+
+        tile_lbl = tk.Label(ex3, text=t("webm_maker.tile_columns_vp9"))
+        tile_lbl.pack(side="left")
         self.tile_col_var = tk.StringVar(value="2")
-        ttk.Combobox(ex3, textvariable=self.tile_col_var,
-                     values=["0", "1", "2", "3", "4", "6"],
-                     state="readonly", width=4).pack(side="left", padx=4)
-        tk.Label(ex3, text=t("webm_maker.row_mt_vp9_multi_thread"),
-                 fg=CLR["fgdim"]).pack(side="left", padx=(10, 0))
+        tile_cb = ttk.Combobox(ex3, textvariable=self.tile_col_var,
+                                values=["0", "1", "2", "3", "4", "6"],
+                                state="readonly", width=4)
+        tile_cb.pack(side="left", padx=4)
+        self.add_tooltip(tile_lbl, t("webm_maker.tile_columns_tooltip"))
+        self.add_tooltip(tile_cb,  t("webm_maker.tile_columns_tooltip"))
+
+        rowmt_lbl = tk.Label(ex3, text="  Row-MT", fg=CLR["fgdim"])
+        rowmt_lbl.pack(side="left", padx=(10, 0))
         self.rowmt_var = tk.BooleanVar(value=True)
-        tk.Checkbutton(ex3, variable=self.rowmt_var).pack(side="left")
+        rowmt_cb = tk.Checkbutton(ex3, variable=self.rowmt_var)
+        rowmt_cb.pack(side="left")
+        self.add_tooltip(rowmt_lbl, t("webm_maker.row_mt_tooltip"))
+        self.add_tooltip(rowmt_cb,  t("webm_maker.row_mt_tooltip"))
 
         self.vp9_extra_widgets = [ex3]   # hide for VP8
 
@@ -354,6 +446,9 @@ class WebMTab(BaseTab):
         self.console.pack(side="left", fill="both", expand=True)
         csb.pack(side="right", fill="y")
 
+        # Apply the initial locked state (checkbox starts checked)
+        self._on_use_source_res_toggle()
+
     # ═════════════════════════════════════════════════════════════════════════
     #  File loading
     # ═════════════════════════════════════════════════════════════════════════
@@ -371,7 +466,8 @@ class WebMTab(BaseTab):
         if not os.path.exists(ffprobe):
             return
         cmd = [ffprobe, "-v", "error",
-               "-show_entries", t("webm_maker.format_duration_stream_width_height_r_frame_rate"),
+               "-show_entries",
+               "format=duration:stream=width,height,r_frame_rate,codec_type,pix_fmt",
                "-of", "json", path]
         try:
             r = subprocess.run(cmd, capture_output=True, text=True,
@@ -387,12 +483,14 @@ class WebMTab(BaseTab):
             fps_str = vid.get("r_frame_rate", "30/1")
             num, den = map(int, fps_str.split("/"))
             fps  = round(num / den, 3) if den else 30.0
+            pix_fmt = vid.get("pix_fmt", "") or ""
 
-            self._src_w   = w
-            self._src_h   = h
-            self._src_dur = dur
-            self._src_fps = fps
-            self._aspect  = w / h if h else 1.0
+            self._src_w      = w
+            self._src_h      = h
+            self._src_dur    = dur
+            self._src_fps    = fps
+            self._src_pixfmt = pix_fmt
+            self._aspect     = w / h if h else 1.0
 
             mins, secs = divmod(int(dur), 60)
             info = (f"{w}×{h}  |  {fps} fps  |  {mins}m {secs}s  "
@@ -400,6 +498,7 @@ class WebMTab(BaseTab):
 
             self.after(0, lambda: self.src_info_lbl.config(text=info, fg=CLR["accent"]))
             self.after(0, lambda: self._seed_resolution(w, h))
+            self.after(0, self._refresh_pixfmt_dropdown)
             self.after(0, self._update_budget_label)
 
             # Auto-name output
@@ -414,55 +513,147 @@ class WebMTab(BaseTab):
     # ═════════════════════════════════════════════════════════════════════════
     def _seed_resolution(self, w, h):
         self._lock_updating = True
-        self.res_w_var.set(w)
-        self.res_h_var.set(h)
-        self.w_slider.config(to=max(7680, w))
-        self.h_slider.config(to=max(4320, h))
-        self._lock_updating = False
+        try:
+            self.res_w_var.set(w)
+            self.res_h_var.set(h)
+            self.res_w_entry_var.set(str(w))
+            self.res_h_entry_var.set(str(h))
+            self.w_slider.config(to=max(7680, w))
+            self.h_slider.config(to=max(4320, h))
+        finally:
+            self._lock_updating = False
 
     def _apply_res_preset(self, w, h):
-        if w == 0:
-            self._seed_resolution(self._src_w or 1920, self._src_h or 1080)
-            return
         self._lock_updating = True
-        self.res_w_var.set(w)
-        self.res_h_var.set(h)
-        self._lock_updating = False
-
-    def _on_w_changed(self, val):
-        if self._lock_updating:
-            return
         try:
-            w = int(float(val))
-            if w < 2: return
-            # Snap to even number
-            w = w if w % 2 == 0 else w + 1
-            self._lock_updating = True
             self.res_w_var.set(w)
-            if self.lock_ar_var.get() and self._aspect:
-                h = int(round(w / self._aspect))
-                h = h if h % 2 == 0 else h + 1
-                self.res_h_var.set(h)
+            self.res_h_var.set(h)
+            self.res_w_entry_var.set(str(w))
+            self.res_h_entry_var.set(str(h))
+        finally:
             self._lock_updating = False
-        except (ValueError, TypeError):
-            pass
 
-    def _on_h_changed(self, val):
+    def _refresh_pixfmt_dropdown(self):
+        """Update the dropdown's first entry to show the detected source pix_fmt."""
+        detected_label = (f"Source ({self._src_pixfmt})"
+                          if self._src_pixfmt else "Source (auto-detect)")
+        current_values = list(self.pixfmt_cb["values"])
+        # The Source entry is always at index 0
+        current_values[0] = detected_label
+        self.pixfmt_cb["values"] = current_values
+        # If the user hasn't changed away from the source option, refresh
+        # the visible text too.
+        if self.pixfmt_var.get().startswith("Source"):
+            self.pixfmt_var.set(detected_label)
+
+    @staticmethod
+    def _validate_int_or_empty(proposed: str) -> bool:
+        """Tk validatecommand: accept empty or all-digit input only."""
+        return proposed == "" or proposed.isdigit()
+
+    def _on_w_slider(self, val):
+        """Slider drag → commit width via the same path as entry-commit."""
         if self._lock_updating:
             return
         try:
-            h = int(float(val))
-            if h < 2: return
-            h = h if h % 2 == 0 else h + 1
-            self._lock_updating = True
-            self.res_h_var.set(h)
-            if self.lock_ar_var.get() and self._aspect:
-                w = int(round(h * self._aspect))
-                w = w if w % 2 == 0 else w + 1
-                self.res_w_var.set(w)
-            self._lock_updating = False
+            self._apply_w(int(float(val)))
         except (ValueError, TypeError):
             pass
+
+    def _on_h_slider(self, val):
+        if self._lock_updating:
+            return
+        try:
+            self._apply_h(int(float(val)))
+        except (ValueError, TypeError):
+            pass
+
+    def _commit_w_from_entry(self):
+        """User pressed Enter or tabbed away — parse and apply, or revert."""
+        raw = self.res_w_entry_var.get().strip()
+        if not raw:
+            # Empty: revert visible text to the slider's current value
+            self.res_w_entry_var.set(str(self.res_w_var.get()))
+            return
+        try:
+            w = int(raw)
+        except ValueError:
+            self.res_w_entry_var.set(str(self.res_w_var.get()))
+            return
+        if w < 2:
+            # Below the minimum — revert so the entry doesn't show a stale value
+            self.res_w_entry_var.set(str(self.res_w_var.get()))
+            return
+        self._apply_w(w)
+
+    def _commit_h_from_entry(self):
+        raw = self.res_h_entry_var.get().strip()
+        if not raw:
+            self.res_h_entry_var.set(str(self.res_h_var.get()))
+            return
+        try:
+            h = int(raw)
+        except ValueError:
+            self.res_h_entry_var.set(str(self.res_h_var.get()))
+            return
+        if h < 2:
+            self.res_h_entry_var.set(str(self.res_h_var.get()))
+            return
+        self._apply_h(h)
+
+    def _apply_w(self, w: int):
+        """Snap, set IntVar, and (if lock-aspect on) update height. Single source of truth."""
+        if w < 2:
+            return
+        w = _snap_even(w)
+        self._lock_updating = True
+        try:
+            self.res_w_var.set(w)
+            self.res_w_entry_var.set(str(w))
+            if self.lock_ar_var.get() and self._aspect:
+                h = _snap_even(int(round(w / self._aspect)))
+                self.res_h_var.set(h)
+                self.res_h_entry_var.set(str(h))
+        finally:
+            self._lock_updating = False
+
+    def _apply_h(self, h: int):
+        if h < 2:
+            return
+        h = _snap_even(h)
+        self._lock_updating = True
+        try:
+            self.res_h_var.set(h)
+            self.res_h_entry_var.set(str(h))
+            if self.lock_ar_var.get() and self._aspect:
+                w = _snap_even(int(round(h * self._aspect)))
+                self.res_w_var.set(w)
+                self.res_w_entry_var.set(str(w))
+        finally:
+            self._lock_updating = False
+
+    def _mirror_w_to_entry(self, *_):
+        """IntVar changed (from slider or programmatic seed) → mirror to entry,
+        unless _apply_* already did it or the entry currently has focus."""
+        if self._lock_updating:
+            return
+        try:
+            if self.focus_get() is self.w_entry:
+                return
+        except (KeyError, tk.TclError):
+            # focus_get() can raise during widget teardown
+            return
+        self.res_w_entry_var.set(str(self.res_w_var.get()))
+
+    def _mirror_h_to_entry(self, *_):
+        if self._lock_updating:
+            return
+        try:
+            if self.focus_get() is self.h_entry:
+                return
+        except (KeyError, tk.TclError):
+            return
+        self.res_h_entry_var.set(str(self.res_h_var.get()))
 
     # ═════════════════════════════════════════════════════════════════════════
     #  Budget label
@@ -508,6 +699,19 @@ class WebMTab(BaseTab):
                 w.pack(fill="x", pady=2)
             else:
                 w.pack_forget()
+
+    def _on_use_source_res_toggle(self):
+        """Enable/disable all child controls in the Resolution section."""
+        locked = self.use_source_res_var.get()
+        state = "disabled" if locked else "normal"
+        # Standard widgets accept "normal" / "disabled"
+        for w in (self.lock_ar_cb, self.w_slider, self.w_entry,
+                  self.h_slider, self.h_entry,
+                  self._res_preset_label, *self._res_preset_btns):
+            w.config(state=state)
+        if not locked:
+            # Returning to manual mode — make sure aspect lock is on by default
+            self.lock_ar_var.set(True)
 
     def _on_audio_change(self, *_):
         has_audio = AUDIO_OPTIONS.get(self.audio_codec_var.get()) is not None
@@ -665,12 +869,12 @@ class WebMTab(BaseTab):
         self._log("")
 
         # ── Build filter string ─────────────────────────────────────────
-        out_w = self.res_w_var.get()
-        out_h = self.res_h_var.get()
-        # Only scale if different from source
         vf_parts = []
-        if out_w != self._src_w or out_h != self._src_h:
-            vf_parts.append(f"scale={out_w}:{out_h}:flags=lanczos")
+        if not self.use_source_res_var.get():
+            out_w = self.res_w_var.get()
+            out_h = self.res_h_var.get()
+            if out_w != self._src_w or out_h != self._src_h:
+                vf_parts.append(f"scale={out_w}:{out_h}:flags=lanczos")
 
         fps_setting = self.fps_var.get().strip()
         if fps_setting and fps_setting != "0":
@@ -679,7 +883,14 @@ class WebMTab(BaseTab):
         vf = ",".join(vf_parts) if vf_parts else None
 
         # ── Pixel format ───────────────────────────────────────────────
-        pixfmt = self.pixfmt_var.get().split(" ")[0]   # strip "(transparency)" etc.
+        # First token is either "Source" or an explicit pix_fmt name like "yuv420p".
+        # _resolve_pixfmt converts "Source" to the detected source pix_fmt and
+        # validates it against the codec's supported set, falling back with a
+        # warning if necessary.
+        raw_choice = self.pixfmt_var.get().split(" ")[0]
+        pixfmt, pixfmt_warning = _resolve_pixfmt(raw_choice, self._src_pixfmt, codec)
+        if pixfmt_warning:
+            self._log(pixfmt_warning)
 
         # ── Common input args ───────────────────────────────────────────
         input_args = [ffmpeg]
